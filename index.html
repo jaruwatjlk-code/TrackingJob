@@ -479,6 +479,7 @@ input[type=file]{display:none}
     </div>
     <button class="sh-close" onclick="closeQS()"><span class="mi" style="font-size:20px">close</span></button>
   </div>
+  <div id="qs-proc-chips" style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--div)"></div>
   <div class="qs-grid">
     <div class="qs-opt" data-v="pend" onclick="pickQS(this)">
       <div class="qs-icon" style="background:#9aa0a6"><span class="mi">circle</span></div>
@@ -645,7 +646,7 @@ input[type=file]{display:none}
 <script>
 // ══ CONFIG ════════════════════════════════════
 const ADMIN_PASSWORD = 'admin1234'; // เปลี่ยนได้
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWG4W57omvae2bboMmw9RfbSBknNwwqJGhLqqNz7yv_WqlMmYYHJ2G5l4eQr_WIDWt/exec';  // ใส่ URL ของ Google Apps Script หลัง deploy
+const GAS_URL = '';  // ใส่ URL ของ Google Apps Script หลัง deploy
 const POLL_INTERVAL = 60000; // 60 วินาที
 
 // ══ PROCESS MAP ═══════════════════════════════
@@ -664,7 +665,7 @@ function baseCode(c){ return c.replace(/\d+(st|nd|rd|th)$/i,'').replace(/\d+$/,'
 let jobs=[], auditLog=[], pendingImport=[];
 let activeFilter='all', activeDateFilter='prev';
 let activeJob=null, isAdmin=false;
-let qsJobId=null, qsPickedStatus=null;
+let qsJobId=null, qsPickedStatus=null, qsProcIdx=null;
 let psJobId=null, psProcIdx=null, psPickedStatus=null;
 let pollTimer=null;
 
@@ -733,7 +734,16 @@ async function pushStatusToGAS(jobId, procIdx, status, comment) {
   try {
     await fetch(GAS_URL, {
       method:'POST',
-      body: JSON.stringify({action:'updateStatus', jobId, procIdx, status, comment}),
+      body: JSON.stringify({action:'updateStatus', jobId, procIdx, status, comment, by: isAdmin?'Admin':'User'}),
+    });
+  } catch(e){}
+}
+async function pushImportToGAS(jobsList) {
+  if(!GAS_URL) return;
+  try {
+    await fetch(GAS_URL, {
+      method:'POST',
+      body: JSON.stringify({action:'importJobs', jobs: jobsList}),
     });
   } catch(e){}
 }
@@ -926,13 +936,50 @@ function openQS(jobId) {
   if(!j) return;
   qsJobId=jobId; qsPickedStatus=null;
   document.getElementById('qs-title').textContent=j.product;
-  // show current process
-  const cur=j.processes.find(p=>p.status!=='done')||j.processes[j.processes.length-1];
-  document.getElementById('qs-sub').textContent=`Process ปัจจุบัน: ${cur.name}`;
+
+  // default to first non-done process
+  const defIdx=j.processes.findIndex(p=>p.status!=='done');
+  qsProcIdx=defIdx>=0?defIdx:j.processes.length-1;
+
+  // build process chips
+  const stColor={done:'var(--green)',wip:'var(--blue)',hold:'var(--red)',pend:'#9aa0a6'};
+  const stBg   ={done:'var(--green-lt)',wip:'var(--blue-lt)',hold:'var(--red-lt)',pend:'var(--gray-lt)'};
+  document.getElementById('qs-proc-chips').innerHTML=j.processes.map((p,i)=>`
+    <div onclick="selectQSProc(${i})" id="qs-chip-${i}" style="
+      flex-shrink:0;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:500;
+      font-family:'Google Sans';cursor:pointer;border:1.5px solid;white-space:nowrap;
+      border-color:${i===qsProcIdx?stColor[p.status]:'var(--div)'};
+      background:${i===qsProcIdx?stBg[p.status]:'var(--surf)'};
+      color:${i===qsProcIdx?stColor[p.status]:'var(--gray)'};
+    ">${baseCode(p.code)}</div>
+  `).join('');
+
+  document.getElementById('qs-sub').textContent=`Process: ${j.processes[qsProcIdx].name}`;
   document.querySelectorAll('.qs-grid .qs-opt').forEach(el=>el.className='qs-opt');
   document.getElementById('qs-hold-box').classList.remove('on');
   document.getElementById('qs-hold-comment').value='';
   openSheet('qs');
+}
+function selectQSProc(i){
+  const j=jobs.find(x=>x.id===qsJobId); if(!j) return;
+  qsProcIdx=i;
+  const stColor={done:'var(--green)',wip:'var(--blue)',hold:'var(--red)',pend:'#9aa0a6'};
+  const stBg   ={done:'var(--green-lt)',wip:'var(--blue-lt)',hold:'var(--red-lt)',pend:'var(--gray-lt)'};
+  j.processes.forEach((_,idx)=>{
+    const p=j.processes[idx];
+    const chip=document.getElementById(`qs-chip-${idx}`);
+    if(!chip) return;
+    chip.style.borderColor=idx===i?stColor[p.status]:'var(--div)';
+    chip.style.background =idx===i?stBg[p.status]:'var(--surf)';
+    chip.style.color      =idx===i?stColor[p.status]:'var(--gray)';
+  });
+  document.getElementById('qs-sub').textContent=`Process: ${j.processes[i].name}`;
+  // pre-fill hold comment if switching to hold process
+  const proc=j.processes[i];
+  document.getElementById('qs-hold-comment').value=proc.comment||'';
+  if(qsPickedStatus==='hold' || proc.status==='hold'){
+    document.getElementById('qs-hold-box').classList.add('on');
+  }
 }
 function pickQS(el) {
   qsPickedStatus=el.dataset.v;
@@ -942,15 +989,14 @@ function pickQS(el) {
   document.getElementById('qs-hold-box').classList.toggle('on',qsPickedStatus==='hold');
 }
 function saveQS() {
-  if(!qsJobId||!qsPickedStatus) return;
+  if(!qsJobId||!qsPickedStatus||qsProcIdx===null) return;
   const j=jobs.find(x=>x.id===qsJobId);
-  const cur=j.processes.find(p=>p.status!=='done')||j.processes[j.processes.length-1];
-  const curIdx=j.processes.indexOf(cur);
-  const from=cur.status;
-  cur.status=qsPickedStatus;
-  cur.comment=qsPickedStatus==='hold'?document.getElementById('qs-hold-comment').value:'';
-  addAudit(qsJobId, cur.code, from, qsPickedStatus, cur.comment);
-  pushStatusToGAS(qsJobId, curIdx, qsPickedStatus, cur.comment);
+  const proc=j.processes[qsProcIdx];
+  const from=proc.status;
+  proc.status=qsPickedStatus;
+  proc.comment=qsPickedStatus==='hold'?document.getElementById('qs-hold-comment').value:'';
+  addAudit(qsJobId, proc.code, from, qsPickedStatus, proc.comment);
+  pushStatusToGAS(qsJobId, qsProcIdx, qsPickedStatus, proc.comment);
   closeQS(); renderAll();
 }
 function closeQS(){ closeSheet('qs'); qsJobId=null; }
@@ -1199,7 +1245,9 @@ function confirmImport(){
       jobs.push(incoming);
     }
   });
-  saveLocal(); pendingImport=[];
+  saveLocal();
+  pushImportToGAS(pendingImport);
+  pendingImport=[];
   closeImport(); renderAll();
 }
 
