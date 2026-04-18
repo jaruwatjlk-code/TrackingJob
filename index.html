@@ -733,11 +733,10 @@ async function gasPost(payload) {
   if(!GAS_URL) return;
   try {
     await fetch(GAS_URL, {
-      method:'POST',
-      mode:'no-cors',
-      body: JSON.stringify(payload),
+      method: 'POST',
+      body: new URLSearchParams({ payload: JSON.stringify(payload) }),
     });
-  } catch(e){}
+  } catch(e){ console.error('GAS POST failed:', e); }
 }
 async function pushStatusToGAS(jobId, procIdx, status, comment) {
   await gasPost({action:'updateStatus', jobId, procIdx, status, comment, by: isAdmin?'Admin':'User'});
