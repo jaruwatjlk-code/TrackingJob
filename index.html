@@ -777,7 +777,7 @@ function jobSt(j) {
 }
 function dateRange() {
   const today=new Date(); today.setHours(0,0,0,0);
-  const iso=d=>d.toISOString().slice(0,10);
+  const iso=d=>localISO(d);
   if(activeDateFilter==='prev'){
     const y=new Date(today); y.setDate(y.getDate()-1);
     return {from:iso(y),to:iso(today)};
@@ -878,7 +878,7 @@ function renderList() {
 
   const groups={};
   filtered.forEach(j=>{(groups[j.due]=groups[j.due]||[]).push(j)});
-  const today=new Date().toISOString().slice(0,10);
+  const today=localISO();
 
   list.innerHTML=Object.keys(groups).sort().map(due=>{
     const diff=Math.round((new Date(due)-new Date(today))/86400000);
@@ -1119,7 +1119,7 @@ function closePS(){ closeSheet('ps'); }
 // ══ BATCH COMMITMENT (admin) ══════════════════
 function showBatchCommit() {
   const dues=[...new Set(jobs.map(j=>j.due))].sort();
-  const today=new Date().toISOString().slice(0,10);
+  const today=localISO();
   const tabs=document.getElementById('bc-tabs');
   tabs.innerHTML=dues.map(d=>`
     <div class="bc-tab${d===today?' on':''}" data-due="${d}" onclick="selectBCDate('${d}')">${fmtDate(d)}</div>
@@ -1222,7 +1222,7 @@ function parseExcel(rows){
     if(dRaw && !prod){
       if(typeof dRaw==='number'){
         const d=new Date(Math.round((dRaw-25569)*86400*1000));
-        due=d.toISOString().slice(0,10);
+        due=localISO(d);
       }
       return;
     }
@@ -1341,6 +1341,9 @@ function fmtDate(iso){
   const days=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
   const mons=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   return `${days[d.getDay()]} ${d.getDate()} ${mons[d.getMonth()]}`;
+}
+function localISO(d=new Date()){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function fmtTime(d){
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
