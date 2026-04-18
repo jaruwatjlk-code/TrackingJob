@@ -403,11 +403,20 @@ input[type=file]{display:none}
 <!-- FILTER BAR -->
 <div class="filter-bar">
   <div class="filter-scroll" id="date-chips">
-    <div class="chip" data-d="prev"  onclick="setDate('prev')">เมื่อวาน+วันนี้</div>
-    <div class="chip" data-d="today" onclick="setDate('today')">วันนี้</div>
-    <div class="chip" data-d="7"     onclick="setDate('7')">7 วัน</div>
-    <div class="chip" data-d="month" onclick="setDate('month')">เดือนนี้</div>
-    <div class="chip" data-d="all"   onclick="setDate('all')">ทั้งหมด</div>
+    <div class="chip" data-d="prev"   onclick="setDate('prev')">เมื่อวาน+วันนี้</div>
+    <div class="chip" data-d="today"  onclick="setDate('today')">วันนี้</div>
+    <div class="chip" data-d="7"      onclick="setDate('7')">7 วัน</div>
+    <div class="chip" data-d="month"  onclick="setDate('month')">เดือนนี้</div>
+    <div class="chip" data-d="all"    onclick="setDate('all')">ทั้งหมด</div>
+    <div class="chip" data-d="custom" onclick="setDate('custom')" style="display:flex;align-items:center;gap:4px">
+      <span class="mi" style="font-size:13px">date_range</span><span id="custom-chip-label">ช่วงวันที่</span>
+    </div>
+  </div>
+  <!-- custom date range row -->
+  <div id="custom-range-row" style="display:none;padding:6px 12px 4px;display:none;gap:8px;align-items:center">
+    <input type="date" id="dr-from" class="bc-time" style="width:130px;font-size:13px" oninput="applyCustomRange()">
+    <span style="font-size:13px;color:var(--gray)">—</span>
+    <input type="date" id="dr-to"   class="bc-time" style="width:130px;font-size:13px" oninput="applyCustomRange()">
   </div>
 </div>
 
@@ -646,7 +655,7 @@ input[type=file]{display:none}
 <script>
 // ══ CONFIG ════════════════════════════════════
 const ADMIN_PASSWORD = 'admin1234'; // เปลี่ยนได้
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWG4W57omvae2bboMmw9RfbSBknNwwqJGhLqqNz7yv_WqlMmYYHJ2G5l4eQr_WIDWt/exec';  // ใส่ URL ของ Google Apps Script หลัง deploy
+const GAS_URL = '';  // ใส่ URL ของ Google Apps Script หลัง deploy
 const POLL_INTERVAL = 60000; // 60 วินาที
 
 // ══ PROCESS MAP ═══════════════════════════════
@@ -664,6 +673,7 @@ function baseCode(c){ return c.replace(/\d+(st|nd|rd|th)$/i,'').replace(/\d+$/,'
 // ══ STATE ═════════════════════════════════════
 let jobs=[], auditLog=[], pendingImport=[];
 let activeFilter='all', activeDateFilter='prev';
+let customFrom='', customTo='';
 let activeJob=null, isAdmin=false;
 let qsJobId=null, qsPickedStatus=null, qsProcIdx=null;
 let psJobId=null, psProcIdx=null, psPickedStatus=null;
@@ -726,7 +736,10 @@ async function fetchFromGAS() {
   try {
     const res=await fetch(GAS_URL+'?action=getJobs');
     const data=await res.json();
-    if(data.jobs) { jobs=data.jobs; renderAll(); saveLocal(); setSyncBadge('ok'); }
+    if(data.jobs) {
+      jobs=data.jobs.map(j=>({...j, due:String(j.due||'').slice(0,10)}));
+      renderAll(); saveLocal(); setSyncBadge('ok');
+    }
   } catch(e) { setSyncBadge('offline'); }
 }
 async function gasPost(payload) {
@@ -780,6 +793,10 @@ function dateRange() {
     const t=new Date(today.getFullYear(),today.getMonth()+1,0);
     return {from:iso(f),to:iso(t)};
   }
+  if(activeDateFilter==='custom'){
+    if(!customFrom && !customTo) return null;
+    return {from:customFrom||'0000-01-01', to:customTo||'9999-12-31'};
+  }
   return null;
 }
 
@@ -815,6 +832,22 @@ function buildProcFilter() {
 function setDate(d) {
   activeDateFilter=d;
   document.querySelectorAll('[data-d]').forEach(el=>el.classList.toggle('on',el.dataset.d===d));
+  const row=document.getElementById('custom-range-row');
+  row.style.display=d==='custom'?'flex':'none';
+  renderList();
+}
+function applyCustomRange(){
+  customFrom=document.getElementById('dr-from').value;
+  customTo=document.getElementById('dr-to').value;
+  // update chip label
+  const lbl=document.getElementById('custom-chip-label');
+  if(customFrom||customTo){
+    const f=customFrom?customFrom.slice(5).replace('-','/'):' ';
+    const t=customTo?customTo.slice(5).replace('-','/'):'  ';
+    lbl.textContent=`${f} – ${t}`;
+  } else {
+    lbl.textContent='ช่วงวันที่';
+  }
   renderList();
 }
 function filterStatus(s) {
@@ -1302,7 +1335,9 @@ function closeSheet(n){
 // ══ UTILS ════════════════════════════════════
 function fmtDate(iso){
   if(!iso) return '—';
-  const d=new Date(iso+'T00:00:00');
+  const s=String(iso).slice(0,10); // normalize: "2026-04-17T..." → "2026-04-17"
+  const d=new Date(s+'T00:00:00');
+  if(isNaN(d)) return iso;
   const days=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
   const mons=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   return `${days[d.getDay()]} ${d.getDate()} ${mons[d.getMonth()]}`;
