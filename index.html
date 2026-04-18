@@ -646,7 +646,7 @@ input[type=file]{display:none}
 <script>
 // ══ CONFIG ════════════════════════════════════
 const ADMIN_PASSWORD = 'admin1234'; // เปลี่ยนได้
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWG4W57omvae2bboMmw9RfbSBknNwwqJGhLqqNz7yv_WqlMmYYHJ2G5l4eQr_WIDWt/exec';  // ใส่ URL ของ Google Apps Script หลัง deploy
+const GAS_URL = '';  // ใส่ URL ของ Google Apps Script หลัง deploy
 const POLL_INTERVAL = 60000; // 60 วินาที
 
 // ══ PROCESS MAP ═══════════════════════════════
@@ -656,8 +656,8 @@ const PM = {
   LA:'Laminating',DC:'Die Cutting',
   GL:'Gluer',MGL:'Manual Glue',GL2nd:'Gluer',
   BT:'Blister',SG:'Sort Glue',IJ:'InkJet',GP:'Glue Pack',
-  IS:'Inspection',CA:'Calender',EM:'Embossing',
-  AS:'Assembly',HS:'Hot Stamp',FL:'Flute',OTH:'Other',
+  IS:'Inspection',CA:'Carton Assy',EM:'Embossing',
+  AS:'Assembly',HS:'Heat Seal',FL:'Folding',OTH:'Other',
 };
 function baseCode(c){ return c.replace(/\d+(st|nd|rd|th)$/i,'').replace(/\d+$/,'') || c; }
 
@@ -734,7 +734,8 @@ async function gasPost(payload) {
   try {
     await fetch(GAS_URL, {
       method: 'POST',
-      body: new URLSearchParams({ payload: JSON.stringify(payload) }),
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: JSON.stringify(payload),
     });
   } catch(e){ console.error('GAS POST failed:', e); }
 }
@@ -907,7 +908,7 @@ function renderCard(j) {
       <div class="jc-inner">
         <div class="jc-top">
           <div>
-            <div class="jc-name">${j.product}</div>
+            <div class="jc-name"><span style="color:#9aa0a6;font-size:12px;font-weight:400;margin-right:4px">#${j.seq}</span>${j.product}</div>
             <div class="jc-qty">${j.qty.toLocaleString()} ชิ้น</div>
           </div>
           <div class="jc-right">
@@ -1264,6 +1265,7 @@ function updateAdminUI(){
   document.getElementById('admin-dot').classList.toggle('on',isAdmin);
   document.getElementById('avatar-label').textContent=isAdmin?'A':'ผู';
   document.getElementById('fab-time').classList.toggle('on',isAdmin);
+  renderList();
 }
 function toggleAdmin(){
   if(isAdmin){
