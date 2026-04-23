@@ -345,6 +345,31 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
   margin-top:8px;font-size:12px;font-weight:600;color:var(--purple);
   display:flex;align-items:center;gap:3px;min-height:20px;
 }
+.bc-proc-del{
+  background:none;border:none;cursor:pointer;padding:0 2px;
+  color:#dadce0;font-size:14px;line-height:1;font-family:'Material Icons Round';
+  display:block;text-align:center;
+}
+.bc-proc-del:active{color:var(--red)}
+.bc-add-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;
+  padding:4px 6px;border-radius:8px;border:1.5px dashed var(--div);
+  color:#9aa0a6;font-size:10px;font-weight:600;font-family:'Google Sans';
+  background:none;align-self:flex-end;margin-bottom:1px;
+}
+.bc-add-btn:active{border-color:var(--purple);color:var(--purple)}
+.bc-picker{
+  display:none;flex-wrap:wrap;gap:5px;margin-top:8px;
+  padding:8px;background:var(--gray-lt);border-radius:8px;
+}
+.bc-picker.on{display:flex}
+.bc-pick-opt{
+  padding:4px 10px;border-radius:10px;font-size:11px;font-weight:600;
+  font-family:'Google Sans';cursor:pointer;border:1.5px solid var(--div);
+  background:var(--surf);color:var(--gray);
+}
+.bc-pick-opt:active{background:var(--purple-lt);color:var(--purple);border-color:var(--purple)}
+.jc-remark{font-size:11px;color:var(--gray);margin-top:4px;display:flex;align-items:center;gap:3px}
 .bc-time{
   border:1.5px solid var(--div);border-radius:8px;
   padding:6px 8px;font-size:13px;font-family:'Roboto';
@@ -719,6 +744,7 @@ let activeJob=null, isAdmin=false;
 let qsJobId=null, qsPickedStatus=null, qsProcIdx=null;
 let psJobId=null, psProcIdx=null, psPickedStatus=null;
 let pollTimer=null;
+let bcCurrentDue='';
 
 // ══ AUDIT LOG ════════════════════════════════
 function addAudit(jobId, procCode, fromSt, toSt, note='') {
@@ -1033,6 +1059,7 @@ function renderCard(j, diff=0) {
           const codes=wp.map(p=>baseCode(p.code)).join('+');
           return `<div class="jc-time"><span class="mi" style="font-size:13px;vertical-align:middle;margin-right:3px">schedule</span>${codes} ${maxT}</div>`;
         })()}
+        ${j.remark?`<div class="jc-remark"><span class="mi" style="font-size:12px">notes</span>${j.remark}</div>`:''}
         <div class="prog"><div class="prog-fill ${st}" style="width:${pct}%"></div></div>
       </div>
     </div>`;
@@ -1204,10 +1231,12 @@ function showBatchCommit() {
     <div class="bc-tab${d===today?' on':''}" data-due="${d}" onclick="selectBCDate('${d}')">${fmtDate(d)}</div>
   `).join('');
   const active=dues.find(d=>d===today)||dues[0]||'';
+  bcCurrentDue=active;
   if(active) renderBCList(active);
   openSheet('bc');
 }
 function selectBCDate(due){
+  bcCurrentDue=due;
   document.querySelectorAll('.bc-tab').forEach(el=>el.classList.toggle('on',el.dataset.due===due));
   renderBCList(due);
 }
@@ -1237,24 +1266,35 @@ function renderBCList(due){
     el.innerHTML='<div style="text-align:center;padding:32px;color:#9aa0a6;font-size:14px">ไม่มีงานในวันนี้</div>';
     return;
   }
-  el.innerHTML=list.map(j=>`
+  el.innerHTML=list.map(j=>{
+    const used=new Set(j.processes.map(p=>baseCode(p.code)));
+    const avail=Object.keys(PM).filter(k=>!used.has(k));
+    return `
     <div class="bc-card">
       <div class="bc-card-head"><span style="color:#9aa0a6;font-size:12px;font-weight:400;margin-right:4px">#${j.seq}</span>${j.product}</div>
       <div class="bc-card-qty">${j.qty.toLocaleString()} ชิ้น</div>
       <div class="bc-procs">
         ${j.processes.map((p,i)=>`
           <div class="bc-proc-item">
+            <button class="bc-proc-del" onclick="removeBCProc('${j.id}',${i})">close</button>
             <span class="bc-proc-code">${baseCode(p.code)}</span>
             <input type="time" class="bc-proc-time${p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?' has-val':''}"
               data-job="${j.id}" data-idx="${i}"
               value="${p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?p.commitment:''}"
               oninput="updateBCResult('${j.id}')">
           </div>`).join('')}
+        ${avail.length?`<button class="bc-add-btn" onclick="toggleBCPicker('${j.id}')">
+          <span class="mi" style="font-size:16px">add</span>เพิ่ม
+        </button>`:''}
+      </div>
+      <div class="bc-picker" id="bc-picker-${j.id}">
+        ${avail.map(c=>`<div class="bc-pick-opt" onclick="doBCAddProc('${j.id}','${c}')">${c}</div>`).join('')}
       </div>
       <input type="text" class="bc-remark" data-remark="${j.id}"
         placeholder="หมายเหตุ..." value="${j.remark||''}">
       <div class="bc-result" id="bc-result-${j.id}">${bcResultPreview(j,null)}</div>
-    </div>`).join('')+
+    </div>`;
+  }).join('')+
     `<button class="bc-save-btn" onclick="saveBatchCommit()">บันทึกเวลาทั้งหมด</button>`;
 }
 function saveBatchCommit(){
@@ -1269,7 +1309,10 @@ function saveBatchCommit(){
   });
   document.querySelectorAll('[data-remark]').forEach(inp=>{
     const job=jobs.find(j=>j.id===inp.dataset.remark);
-    if(job) job.remark=inp.value;
+    if(job && inp.value!==job.remark){
+      job.remark=inp.value;
+      gasPost({action:'updateJobRemark', jobId:job.id, remark:inp.value});
+    }
   });
   saveLocal();
   pushCommitmentToGAS(updates);
@@ -1278,6 +1321,27 @@ function saveBatchCommit(){
   if(activeJob) renderTimeline();
 }
 function closeBC(){ closeSheet('bc'); }
+
+function removeBCProc(jobId, idx){
+  const j=jobs.find(x=>x.id===jobId); if(!j) return;
+  j.processes.splice(idx,1);
+  // re-index proc_idx
+  j.processes.forEach((p,i)=>p.proc_idx=i);
+  saveLocal();
+  gasPost({action:'replaceJobProcs', jobId, processes:j.processes});
+  renderBCList(bcCurrentDue);
+}
+function toggleBCPicker(jobId){
+  const p=document.getElementById('bc-picker-'+jobId);
+  if(p) p.classList.toggle('on');
+}
+function doBCAddProc(jobId, code){
+  const j=jobs.find(x=>x.id===jobId); if(!j) return;
+  j.processes.push({code, name:PM[code]||code, status:'pend', responsible:'', commitment:'', comment:''});
+  saveLocal();
+  gasPost({action:'replaceJobProcs', jobId, processes:j.processes});
+  renderBCList(bcCurrentDue);
+}
 
 // ══ DELETE JOB (admin) ═══════════════════════
 function confirmDeleteJob(jobId){
