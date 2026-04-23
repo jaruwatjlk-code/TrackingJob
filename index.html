@@ -351,6 +351,13 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
   display:block;text-align:center;
 }
 .bc-proc-del:active{color:var(--red)}
+.bc-drag-handle{
+  color:#dadce0;font-size:14px;line-height:1;font-family:'Material Icons Round';
+  display:block;text-align:center;cursor:grab;touch-action:none;
+}
+.bc-drag-handle:active{cursor:grabbing;color:var(--purple)}
+.bc-proc-item.sortable-ghost{opacity:.35;background:var(--purple-lt);border-radius:8px}
+.bc-proc-item.sortable-chosen{box-shadow:var(--sh2);border-radius:8px}
 .bc-add-btn{
   display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;
   padding:4px 6px;border-radius:8px;border:1.5px dashed var(--div);
@@ -717,6 +724,7 @@ input[type=file]{display:none}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 // ══ CONFIG ════════════════════════════════════
 const ADMIN_PASSWORD = 'admin1234'; // เปลี่ยนได้
@@ -1266,6 +1274,7 @@ function renderBCList(due){
     el.innerHTML='<div style="text-align:center;padding:32px;color:#9aa0a6;font-size:14px">ไม่มีงานในวันนี้</div>';
     return;
   }
+  el.innerHTML='';
   el.innerHTML=list.map(j=>{
     const used=new Set(j.processes.map(p=>baseCode(p.code)));
     const avail=Object.keys(PM).filter(k=>!used.has(k));
@@ -1275,7 +1284,8 @@ function renderBCList(due){
       <div class="bc-card-qty">${j.qty.toLocaleString()} ชิ้น</div>
       <div class="bc-procs">
         ${j.processes.map((p,i)=>`
-          <div class="bc-proc-item">
+          <div class="bc-proc-item" data-job="${j.id}" data-idx="${i}">
+            <span class="bc-drag-handle">drag_indicator</span>
             <button class="bc-proc-del" onclick="removeBCProc('${j.id}',${i})">close</button>
             <span class="bc-proc-code">${baseCode(p.code)}</span>
             <input type="time" class="bc-proc-time${p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?' has-val':''}"
@@ -1296,6 +1306,36 @@ function renderBCList(due){
     </div>`;
   }).join('')+
     `<button class="bc-save-btn" onclick="saveBatchCommit()">บันทึกเวลาทั้งหมด</button>`;
+
+  // init drag-to-reorder per job card
+  el.querySelectorAll('.bc-procs').forEach(container=>{
+    Sortable.create(container,{
+      animation:150,
+      handle:'.bc-drag-handle',
+      ghostClass:'sortable-ghost',
+      chosenClass:'sortable-chosen',
+      onEnd(evt){
+        const jobId=evt.item.dataset.job;
+        const j=jobs.find(x=>x.id===jobId); if(!j) return;
+        // read new order from DOM
+        const newOrder=[...container.querySelectorAll('.bc-proc-item[data-idx]')]
+          .map(el=>parseInt(el.dataset.idx));
+        j.processes=[...newOrder.map(i=>j.processes[i])];
+        saveLocal();
+        gasPost({action:'replaceJobProcs', jobId, processes:j.processes});
+        // re-render this card's result preview
+        updateBCResult(jobId);
+        // update data-idx attributes
+        container.querySelectorAll('.bc-proc-item').forEach((el,i)=>{
+          el.dataset.idx=i;
+          const inp=el.querySelector('.bc-proc-time');
+          if(inp) inp.dataset.idx=i;
+          const del=el.querySelector('.bc-proc-del');
+          if(del) del.setAttribute('onclick',`removeBCProc('${jobId}',${i})`);
+        });
+      }
+    });
+  });
 }
 function saveBatchCommit(){
   const updates=[];
