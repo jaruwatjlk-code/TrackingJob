@@ -135,10 +135,22 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 .job-card.s-wip {border-left-color:var(--blue)}
 .job-card.s-done{border-left-color:var(--green)}
 .job-card.pressing{box-shadow:var(--sh2);transform:scale(.98);background:#fafafa}
+.job-card.due-over{background:#fff8f7}
+.job-card.due-today{background:#fffbf0}
 .jc-inner{padding:11px 12px}
 .jc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:9px}
 .jc-name{font-family:'Google Sans';font-size:15px;font-weight:500;color:var(--ink)}
 .jc-qty{font-size:11px;color:var(--gray);margin-top:2px}
+.jc-due-chip{font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;margin-top:4px;display:inline-flex;align-items:center;gap:2px}
+.jc-due-chip.over{background:var(--red-lt);color:var(--red)}
+.jc-due-chip.today{background:var(--amber-lt);color:#b06000}
+.jc-hold-note{display:flex;align-items:center;gap:4px;margin-top:6px;padding:5px 8px;border-radius:7px;background:var(--red-lt);color:var(--red);font-size:11px;font-weight:500}
+.jc-time{font-size:11px;color:var(--blue);font-weight:500;margin-top:4px;display:flex;align-items:center}
+.section-hdr{display:flex;align-items:center;gap:5px;padding:16px 12px 3px;font-family:'Google Sans';font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.section-hdr.overdue{color:var(--red)}
+.section-hdr.today{color:#b06000}
+.section-hdr.future{color:var(--gray)}
+.section-hdr .mi{font-size:13px}
 .jc-right{display:flex;align-items:center;gap:5px;flex-shrink:0}
 
 /* ── STATUS BADGE (clearer) ── */
@@ -403,7 +415,7 @@ input[type=file]{display:none}
 <!-- FILTER BAR -->
 <div class="filter-bar">
   <div class="filter-scroll" id="date-chips">
-    <div class="chip" data-d="prev"   onclick="setDate('prev')">เมื่อวาน+วันนี้</div>
+    <div class="chip" data-d="prev"   onclick="setDate('prev')">วันนี้+ค้าง</div>
     <div class="chip" data-d="today"  onclick="setDate('today')">วันนี้</div>
     <div class="chip" data-d="7"      onclick="setDate('7')">7 วัน</div>
     <div class="chip" data-d="month"  onclick="setDate('month')">เดือนนี้</div>
@@ -655,7 +667,7 @@ input[type=file]{display:none}
 <script>
 // ══ CONFIG ════════════════════════════════════
 const ADMIN_PASSWORD = 'admin1234'; // เปลี่ยนได้
-const GAS_URL = 'https://docs.google.com/spreadsheets/d/1Z96a0TxFc6xvS4yHOVPxjMVzVoaxZgd1tGzvjN389xQ/edit?gid=0#gid=0';  // ใส่ URL ของ Google Apps Script หลัง deploy
+const GAS_URL = 'https://docs.google.com/spreadsheets/d/1Xf5S0dANIHssjvc1-1kmWSjOxMC83KZgEpKThddsKEc/edit?gid=1837720472#gid=1837720472';
 const POLL_INTERVAL = 60000; // 60 วินาที
 
 // ══ PROCESS MAP ═══════════════════════════════
@@ -721,7 +733,10 @@ function setSyncBadge(state, timeStr='') {
     icon.textContent='cloud_done'; text.textContent=timeStr||fmtTime(new Date());
   } else if(state==='offline'){
     badge.className='sync-badge offline';
-    icon.textContent='cloud_off'; text.textContent='ออฟไลน์';
+    const saved=localStorage.getItem('pt_saved');
+    icon.textContent='cloud_off';
+    text.textContent=saved?`cache ${fmtTime(new Date(saved))}`:'ไม่มีสัญญาณ';
+    badge.title='เครือข่ายบริษัทอาจ block Google Script — ข้อมูลมาจาก cache';
   } else if(state==='cache'){
     badge.className='sync-badge';
     const saved=localStorage.getItem('pt_saved');
@@ -740,7 +755,7 @@ async function fetchFromGAS() {
       jobs=data.jobs.map(j=>({...j, due:String(j.due||'').slice(0,10)}));
       renderAll(); saveLocal(); setSyncBadge('ok');
     }
-  } catch(e) { setSyncBadge('offline'); }
+  } catch(e) { console.error('GAS fetch error:', e); setSyncBadge('offline'); }
 }
 async function gasPost(payload) {
   if(!GAS_URL) return;
@@ -779,8 +794,7 @@ function dateRange() {
   const today=new Date(); today.setHours(0,0,0,0);
   const iso=d=>localISO(d);
   if(activeDateFilter==='prev'){
-    const y=new Date(today); y.setDate(y.getDate()-1);
-    return {from:iso(y),to:iso(today)};
+    return {from:'2000-01-01', to:iso(today)}; // วันนี้ + ค้างทุกวันที่ผ่านมา
   }
   if(activeDateFilter==='today') return {from:iso(today),to:iso(today)};
   if(activeDateFilter==='7'){
@@ -880,17 +894,28 @@ function renderList() {
   filtered.forEach(j=>{(groups[j.due]=groups[j.due]||[]).push(j)});
   const today=localISO();
 
-  list.innerHTML=Object.keys(groups).sort().map(due=>{
-    const diff=Math.round((new Date(due)-new Date(today))/86400000);
+  const sortedDates=Object.keys(groups).sort();
+  let html='', shownOver=false, shownToday=false, shownFuture=false;
+  sortedDates.forEach(due=>{
+    const diff=Math.round((new Date(due+' 00:00:00')-new Date(today+' 00:00:00'))/86400000);
+    if(diff<0 && !shownOver){
+      html+=`<div class="section-hdr overdue"><span class="mi">warning_amber</span>ค้างส่ง</div>`;
+      shownOver=true;
+    } else if(diff===0 && !shownToday){
+      html+=`<div class="section-hdr today"><span class="mi">today</span>วันนี้</div>`;
+      shownToday=true;
+    } else if(diff>0 && !shownFuture){
+      html+=`<div class="section-hdr future"><span class="mi">event</span>กำหนดส่ง</div>`;
+      shownFuture=true;
+    }
     const urg=diff<0?`<span class="badge-over">เลย ${Math.abs(diff)} วัน</span>`
               :diff===0?`<span class="badge-today">วันนี้</span>`:'';
-    return `
-      <div class="date-group">
+    html+=`<div class="date-group">
         <span class="date-txt">${fmtDate(due)}</span>${urg}
         <span class="date-count">${groups[due].length} งาน</span>
-      </div>
-      ${groups[due].map(j=>renderCard(j)).join('')}`;
-  }).join('');
+      </div>${groups[due].map(j=>renderCard(j,diff)).join('')}`;
+  });
+  list.innerHTML=html;
 
   if(filtered.length===0 && jobs.length>0)
     list.innerHTML='<div style="text-align:center;padding:40px 16px;color:#9aa0a6;font-size:14px">ไม่พบงานที่ตรงกับเงื่อนไข</div>';
@@ -914,7 +939,7 @@ function renderList() {
   });
 }
 
-function renderCard(j) {
+function renderCard(j, diff=0) {
   const st=jobSt(j);
   const doneN=j.processes.filter(p=>p.status==='done').length;
   const pct=Math.round((doneN/j.processes.length)*100);
@@ -936,13 +961,30 @@ function renderCard(j) {
       </div>${line}`;
   }).join('');
 
+  // due urgency chip (only overdue, not done)
+  const dueChip = st!=='done' && diff<0
+    ? `<span class="jc-due-chip over"><span class="mi" style="font-size:10px">flag</span>เลย ${Math.abs(diff)} วัน</span>`
+    : st!=='done' && diff===0
+    ? `<span class="jc-due-chip today"><span class="mi" style="font-size:10px">flag</span>ครบวันนี้</span>`
+    : '';
+
+  // hold reason from first held process with a comment
+  const holdProc = st==='hold' ? j.processes.find(p=>p.status==='hold'&&p.comment) : null;
+  const holdNote = holdProc
+    ? `<div class="jc-hold-note"><span class="mi" style="font-size:13px">warning</span>${holdProc.comment}</div>`
+    : '';
+
+  // extra class for urgency bg tint
+  const urgCls = st!=='done' && diff<0 ? ' due-over' : st!=='done' && diff===0 ? ' due-today' : '';
+
   return `
-    <div class="job-card s-${st}" data-id="${j.id}" onclick="openDetail('${j.id}')">
+    <div class="job-card s-${st}${urgCls}" data-id="${j.id}" onclick="openDetail('${j.id}')">
       <div class="jc-inner">
         <div class="jc-top">
           <div>
             <div class="jc-name"><span style="color:#9aa0a6;font-size:12px;font-weight:400;margin-right:4px">#${j.seq}</span>${j.product}</div>
             <div class="jc-qty">${j.qty.toLocaleString()} ชิ้น</div>
+            ${dueChip}
           </div>
           <div class="jc-right">
             ${badge}
@@ -954,6 +996,11 @@ function renderCard(j) {
           </div>
         </div>
         <div class="nodes">${nodes}</div>
+        ${holdNote}
+        ${(()=>{
+          const t=j.processes.filter(p=>p.commitment).map(p=>`${baseCode(p.code)} ${p.commitment}`).join(' · ');
+          return t?`<div class="jc-time"><span class="mi" style="font-size:13px;vertical-align:middle;margin-right:3px">schedule</span>${t}</div>`:'';
+        })()}
         <div class="prog"><div class="prog-fill ${st}" style="width:${pct}%"></div></div>
       </div>
     </div>`;
