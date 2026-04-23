@@ -13,6 +13,7 @@
   --green:#1e8e3e;--green-lt:#e6f4ea;
   --red:#d93025;--red-lt:#fce8e6;
   --amber:#f9ab00;--amber-lt:#fef7e0;
+  --orange:#e8710a;--orange-lt:#fde8d4;
   --purple:#7b1fa2;--purple-lt:#f3e5f5;
   --gray:#5f6368;--gray-lt:#f1f3f4;
   --ink:#202124;--div:#e0e0e0;--surf:#fff;--bg:#f8f9fa;
@@ -113,7 +114,10 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 .stat-card.on{border-color:var(--blue);background:var(--blue-lt)}
 .stat-num{font-family:'Google Sans';font-size:20px;font-weight:700;line-height:1}
 .stat-lbl{font-size:10px;color:var(--gray);font-weight:500}
+.stat-pct{font-size:9px;color:#9aa0a6;font-family:'Google Sans';margin-top:1px}
 .stat-card.on .stat-lbl{color:var(--blue)}
+.stat-bar{display:flex;height:4px;border-radius:2px;overflow:hidden;margin:6px 12px 0;gap:1px}
+.stat-bar-seg{transition:flex .4s;min-width:0}
 
 /* ── DATE GROUP ── */
 .date-group{padding:14px 12px 5px;display:flex;align-items:center;gap:6px}
@@ -124,9 +128,10 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 
 /* ── JOB CARD ── */
 .job-card{
-  background:var(--surf);margin:0 12px 6px;border-radius:10px;
+  background:var(--surf);margin:0 12px 8px;border-radius:10px;
   box-shadow:var(--sh1);cursor:pointer;
   border-left:4px solid var(--div);
+  overflow:hidden;
   transition:box-shadow .12s,transform .1s;
   -webkit-tap-highlight-color:transparent;user-select:none;
 }
@@ -134,6 +139,7 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 .job-card.s-hold{border-left-color:var(--red)}
 .job-card.s-wip {border-left-color:var(--blue)}
 .job-card.s-done{border-left-color:var(--green)}
+.job-card.s-fail{border-left-color:var(--orange)}
 .job-card.pressing{box-shadow:var(--sh2);transform:scale(.98);background:#fafafa}
 .job-card.due-over{background:#fff8f7}
 .job-card.due-today{background:#fffbf0}
@@ -169,6 +175,8 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
 /* pending: gray, no icon */
 .sb.pend{background:var(--gray-lt);color:var(--gray)}
+/* fail: orange */
+.sb.fail{background:var(--orange-lt);color:var(--orange)}
 
 /* ── PROCESS NODES ── */
 .nodes{
@@ -184,6 +192,7 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 .dot.hold  {background:var(--red); box-shadow:0 0 0 3px var(--red-lt);animation:dotpulse 1s ease infinite}
 @keyframes dotpulse{0%,100%{box-shadow:0 0 0 3px var(--red-lt)}50%{box-shadow:0 0 0 5px var(--red-lt)}}
 .dot.pend  {background:#e8eaed;border:1.5px solid #bdc1c6}
+.dot.fail  {background:var(--orange)}
 .node-lbl{font-size:9px;font-weight:500;line-height:1}
 .node-lbl.done{color:var(--green)}.node-lbl.wip{color:var(--blue)}
 .node-lbl.hold{color:var(--red)}.node-lbl.pend{color:#9aa0a6}
@@ -214,6 +223,16 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 }
 .fab .mi{font-size:19px}
 /* admin-only FABs */
+.fab-summary{
+  position:fixed;bottom:16px;left:16px;z-index:20;
+  display:flex;align-items:center;gap:6px;
+  background:var(--ink);color:#fff;border:none;
+  border-radius:14px;padding:0 18px;height:48px;
+  font-family:'Google Sans';font-size:14px;font-weight:500;
+  cursor:pointer;box-shadow:0 4px 12px rgba(32,33,36,.35);
+  -webkit-tap-highlight-color:transparent;
+}
+.fab-summary .mi{font-size:18px}
 .fab-pcfg{
   position:fixed;bottom:196px;right:16px;z-index:20;
   display:none;align-items:center;justify-content:center;
@@ -234,6 +253,8 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 }
 .fab-sheet.on{display:flex}
 .fab-sheet .mi{font-size:20px}
+/* hide share btn on desktop (no navigator.share) */
+@media(hover:hover){#sum-share-btn{display:none!important}}
 .pcfg-row{
   display:flex;align-items:center;gap:8px;
   padding:8px 0;border-bottom:1px solid var(--div);
@@ -286,6 +307,7 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 .tl-dot.wip   {background:var(--blue)}
 .tl-dot.hold  {background:var(--red);animation:dotpulse 1s ease infinite}
 .tl-dot.pend  {background:#e8eaed;border:2px solid #bdc1c6}
+.tl-dot.fail  {background:var(--orange)}
 .tl-dot .mi{font-size:13px;color:#fff}
 .tl-dot.pend .mi{color:#9aa0a6}
 .tl-line{width:2px;background:#e0e0e0;flex:1;margin:3px 0}
@@ -317,6 +339,7 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 .qs-opt.sel-green{border-color:var(--green);background:var(--green-lt)}
 .qs-opt.sel-red{border-color:var(--red);background:var(--red-lt)}
 .qs-opt.sel-gray{border-color:#9aa0a6;background:var(--gray-lt)}
+.qs-opt.sel-orange{border-color:var(--orange);background:var(--orange-lt)}
 .qs-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .qs-icon .mi{font-size:20px;color:#fff}
 .qs-lbl{font-family:'Google Sans';font-size:13px;font-weight:500}
@@ -463,7 +486,7 @@ td{padding:7px 10px;color:var(--ink)}
 @keyframes fadeIn  {from{opacity:0}to{opacity:1}}
 @keyframes slideUp {from{transform:translateY(50px);opacity:0}to{transform:translateY(0);opacity:1}}
 input[type=file]{display:none}
-.pb80{padding-bottom:88px}
+.pb80{padding-bottom:120px}
 </style>
 </head>
 <body>
@@ -520,26 +543,44 @@ input[type=file]{display:none}
 
 <!-- STAT ROW -->
 <div class="stat-row">
-  <div class="stat-card on" data-f="all"     onclick="filterStatus('all')">
+  <div class="stat-card on" data-f="all"  onclick="filterStatus('all')">
     <span class="stat-num" id="cnt-all"  style="color:var(--ink)">0</span>
     <span class="stat-lbl">ทั้งหมด</span>
+    <span class="stat-pct" id="pct-all"></span>
   </div>
-  <div class="stat-card" data-f="wip"     onclick="filterStatus('wip')">
+  <div class="stat-card" data-f="wip"    onclick="filterStatus('wip')">
     <span class="stat-num" id="cnt-wip"  style="color:var(--blue)">0</span>
     <span class="stat-lbl">กำลังทำ</span>
+    <span class="stat-pct" id="pct-wip">0%</span>
   </div>
-  <div class="stat-card" data-f="hold"    onclick="filterStatus('hold')">
+  <div class="stat-card" data-f="hold"   onclick="filterStatus('hold')">
     <span class="stat-num" id="cnt-hold" style="color:var(--red)">0</span>
     <span class="stat-lbl">HOLD</span>
+    <span class="stat-pct" id="pct-hold">0%</span>
   </div>
-  <div class="stat-card" data-f="done"    onclick="filterStatus('done')">
+  <div class="stat-card" data-f="done"   onclick="filterStatus('done')">
     <span class="stat-num" id="cnt-done" style="color:var(--green)">0</span>
     <span class="stat-lbl">เสร็จ</span>
+    <span class="stat-pct" id="pct-done">0%</span>
   </div>
-  <div class="stat-card" data-f="pend"    onclick="filterStatus('pend')">
+  <div class="stat-card" data-f="fail"   onclick="filterStatus('fail')">
+    <span class="stat-num" id="cnt-fail" style="color:var(--orange)">0</span>
+    <span class="stat-lbl">ไม่สำเร็จ</span>
+    <span class="stat-pct" id="pct-fail">0%</span>
+  </div>
+  <div class="stat-card" data-f="pend"   onclick="filterStatus('pend')">
     <span class="stat-num" id="cnt-pend" style="color:var(--gray)">0</span>
     <span class="stat-lbl">รอ</span>
+    <span class="stat-pct" id="pct-pend">0%</span>
   </div>
+</div>
+<!-- STACKED % BAR -->
+<div class="stat-bar">
+  <div class="stat-bar-seg" id="bar-wip"  style="background:var(--blue)"></div>
+  <div class="stat-bar-seg" id="bar-done" style="background:var(--green)"></div>
+  <div class="stat-bar-seg" id="bar-hold" style="background:var(--red)"></div>
+  <div class="stat-bar-seg" id="bar-fail" style="background:var(--orange)"></div>
+  <div class="stat-bar-seg" id="bar-pend" style="background:#e8eaed;flex:1"></div>
 </div>
 
 <!-- hint for long press -->
@@ -556,6 +597,9 @@ input[type=file]{display:none}
 </div>
 
 <!-- FABs -->
+<button class="fab-summary" onclick="showSummary()">
+  <span class="mi">summarize</span> สรุปรายการ
+</button>
 <button class="fab-pcfg" id="fab-pcfg" onclick="showPCfg()">
   <span class="mi">settings</span>
 </button>
@@ -598,9 +642,13 @@ input[type=file]{display:none}
       <div class="qs-icon" style="background:var(--red)"><span class="mi">pause_circle</span></div>
       <span class="qs-lbl" style="color:var(--red)">HOLD</span>
     </div>
+    <div class="qs-opt" data-v="fail" onclick="pickQS(this)">
+      <div class="qs-icon" style="background:var(--orange)"><span class="mi">cancel</span></div>
+      <span class="qs-lbl" style="color:var(--orange)">ไม่สำเร็จ</span>
+    </div>
   </div>
   <div class="hold-box" id="qs-hold-box">
-    <label>สาเหตุที่ HOLD</label>
+    <label>สาเหตุที่ HOLD / ไม่สำเร็จ</label>
     <textarea id="qs-hold-comment" rows="2" placeholder="ระบุสาเหตุ..."></textarea>
   </div>
   <div class="modal-btns">
@@ -658,14 +706,53 @@ input[type=file]{display:none}
       <div class="qs-icon" style="background:var(--red)"><span class="mi">pause_circle</span></div>
       <span class="qs-lbl" style="color:var(--red)">HOLD</span>
     </div>
+    <div class="qs-opt" data-v="fail" onclick="pickPS(this)">
+      <div class="qs-icon" style="background:var(--orange)"><span class="mi">cancel</span></div>
+      <span class="qs-lbl" style="color:var(--orange)">ไม่สำเร็จ</span>
+    </div>
   </div>
   <div class="hold-box" id="ps-hold-box">
-    <label>สาเหตุที่ HOLD</label>
+    <label>สาเหตุที่ HOLD / ไม่สำเร็จ</label>
     <textarea id="ps-hold-comment" rows="2" placeholder="ระบุสาเหตุ..."></textarea>
   </div>
   <div class="modal-btns">
     <button class="btn btn-ghost" onclick="closePS()">ยกเลิก</button>
     <button class="btn btn-primary" onclick="savePS()">บันทึก</button>
+  </div>
+</div>
+
+<!-- ══ SUMMARY SHEET ══ -->
+<div id="ov-sum" class="ov" onclick="closeSum()"></div>
+<div id="sh-sum" class="sheet">
+  <div class="sh-handle"></div>
+  <div class="sh-head">
+    <div>
+      <div class="sh-title">สรุปรายการนัด</div>
+      <div class="sh-sub" id="sum-sub"></div>
+    </div>
+    <button class="sh-close" onclick="closeSum()"><span class="mi" style="font-size:20px">close</span></button>
+  </div>
+  <div style="padding:0 16px 8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none" id="sum-tabs"></div>
+  <div style="position:relative;margin:0 16px 12px">
+    <textarea id="sum-text" readonly style="
+      width:100%;min-height:340px;border:1.5px solid var(--div);border-radius:10px;
+      padding:12px;font-size:13px;font-family:'Roboto';line-height:1.7;
+      resize:none;outline:none;background:var(--gray-lt);color:var(--ink);
+    "></textarea>
+  </div>
+  <div style="padding:0 16px 24px;display:flex;gap:8px">
+    <button onclick="copySum()" id="sum-copy-btn" style="
+      flex:1;height:48px;border-radius:24px;border:none;
+      background:var(--blue);color:#fff;font-family:'Google Sans';
+      font-size:15px;font-weight:500;cursor:pointer;display:flex;
+      align-items:center;justify-content:center;gap:6px;
+    "><span class="mi">content_copy</span>คัดลอก</button>
+    <button onclick="shareSum()" id="sum-share-btn" style="
+      flex:1;height:48px;border-radius:24px;border:none;
+      background:var(--green);color:#fff;font-family:'Google Sans';
+      font-size:15px;font-weight:500;cursor:pointer;display:flex;
+      align-items:center;justify-content:center;gap:6px;
+    "><span class="mi">share</span>แชร์</button>
   </div>
 </div>
 
@@ -910,7 +997,8 @@ function startPolling() {
 function jobSt(j) {
   const s=j.processes.map(p=>p.status);
   if(s.some(x=>x==='hold')) return 'hold';
-  if(s.every(x=>x==='done')) return 'done';
+  if(s.some(x=>x==='fail')) return 'fail';
+  if(s.every(x=>x==='done'||x==='fail')) return 'done';
   if(s.some(x=>x==='wip'))  return 'wip';
   return 'pend';
 }
@@ -942,13 +1030,27 @@ function dateRange() {
 function renderAll() { updateSummary(); renderList(); buildProcFilter(); updateAdminUI(); }
 
 function updateSummary() {
-  const c={all:jobs.length,wip:0,hold:0,done:0,pend:0};
+  const c={all:jobs.length,wip:0,hold:0,done:0,fail:0,pend:0};
   jobs.forEach(j=>c[jobSt(j)]++);
+  const pct=k=>c.all?Math.round(c[k]/c.all*100)+'%':'0%';
   document.getElementById('cnt-all').textContent=c.all;
   document.getElementById('cnt-wip').textContent=c.wip;
   document.getElementById('cnt-hold').textContent=c.hold;
   document.getElementById('cnt-done').textContent=c.done;
+  document.getElementById('cnt-fail').textContent=c.fail;
   document.getElementById('cnt-pend').textContent=c.pend;
+  document.getElementById('pct-wip').textContent=pct('wip');
+  document.getElementById('pct-hold').textContent=pct('hold');
+  document.getElementById('pct-done').textContent=pct('done');
+  document.getElementById('pct-fail').textContent=pct('fail');
+  document.getElementById('pct-pend').textContent=pct('pend');
+  // stacked bar
+  const f=k=>c.all?(c[k]/c.all*100)+'%':'0%';
+  document.getElementById('bar-wip').style.flex=c.wip;
+  document.getElementById('bar-done').style.flex=c.done;
+  document.getElementById('bar-hold').style.flex=c.hold;
+  document.getElementById('bar-fail').style.flex=c.fail;
+  document.getElementById('bar-pend').style.flex=c.pend||0.01;
   const pill=document.getElementById('hold-pill');
   document.getElementById('hold-count').textContent=c.hold;
   pill.classList.toggle('on',c.hold>0);
@@ -1072,8 +1174,9 @@ function renderCard(j, diff=0) {
     done:`<div class="sb done"><span class="mi" style="font-size:12px">check_circle</span>เสร็จ</div>`,
     wip: `<div class="sb wip"><span class="spin mi" style="font-size:12px">autorenew</span>กำลังทำ</div>`,
     hold:`<div class="sb hold"><span class="pulse"></span>HOLD</div>`,
+    fail:`<div class="sb fail"><span class="mi" style="font-size:12px">cancel</span>ไม่สำเร็จ</div>`,
     pend:`<div class="sb pend">รอ</div>`,
-  }[st];
+  }[st]||`<div class="sb pend">รอ</div>`;
 
   const nodes=j.processes.map((p,i)=>{
     const isLast=i===j.processes.length-1;
@@ -1146,8 +1249,8 @@ function openQS(jobId) {
   qsProcIdx=defIdx>=0?defIdx:j.processes.length-1;
 
   // build process chips
-  const stColor={done:'var(--green)',wip:'var(--blue)',hold:'var(--red)',pend:'#9aa0a6'};
-  const stBg   ={done:'var(--green-lt)',wip:'var(--blue-lt)',hold:'var(--red-lt)',pend:'var(--gray-lt)'};
+  const stColor={done:'var(--green)',wip:'var(--blue)',hold:'var(--red)',fail:'var(--orange)',pend:'#9aa0a6'};
+  const stBg   ={done:'var(--green-lt)',wip:'var(--blue-lt)',hold:'var(--red-lt)',fail:'var(--orange-lt)',pend:'var(--gray-lt)'};
   document.getElementById('qs-proc-chips').innerHTML=j.processes.map((p,i)=>`
     <div onclick="selectQSProc(${i})" id="qs-chip-${i}" style="
       flex-shrink:0;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:500;
@@ -1167,8 +1270,8 @@ function openQS(jobId) {
 function selectQSProc(i){
   const j=jobs.find(x=>x.id===qsJobId); if(!j) return;
   qsProcIdx=i;
-  const stColor={done:'var(--green)',wip:'var(--blue)',hold:'var(--red)',pend:'#9aa0a6'};
-  const stBg   ={done:'var(--green-lt)',wip:'var(--blue-lt)',hold:'var(--red-lt)',pend:'var(--gray-lt)'};
+  const stColor={done:'var(--green)',wip:'var(--blue)',hold:'var(--red)',fail:'var(--orange)',pend:'#9aa0a6'};
+  const stBg   ={done:'var(--green-lt)',wip:'var(--blue-lt)',hold:'var(--red-lt)',fail:'var(--orange-lt)',pend:'var(--gray-lt)'};
   j.processes.forEach((_,idx)=>{
     const p=j.processes[idx];
     const chip=document.getElementById(`qs-chip-${idx}`);
@@ -1188,9 +1291,9 @@ function selectQSProc(i){
 function pickQS(el) {
   qsPickedStatus=el.dataset.v;
   document.querySelectorAll('.qs-grid .qs-opt').forEach(e=>e.className='qs-opt');
-  const map={pend:'sel-gray',wip:'sel-blue',done:'sel-green',hold:'sel-red'};
+  const map={pend:'sel-gray',wip:'sel-blue',done:'sel-green',hold:'sel-red',fail:'sel-orange'};
   el.classList.add(map[qsPickedStatus]);
-  document.getElementById('qs-hold-box').classList.toggle('on',qsPickedStatus==='hold');
+  document.getElementById('qs-hold-box').classList.toggle('on',qsPickedStatus==='hold'||qsPickedStatus==='fail');
 }
 function saveQS() {
   if(!qsJobId||!qsPickedStatus||qsProcIdx===null) return;
@@ -1198,7 +1301,8 @@ function saveQS() {
   const proc=j.processes[qsProcIdx];
   const from=proc.status;
   proc.status=qsPickedStatus;
-  proc.comment=qsPickedStatus==='hold'?document.getElementById('qs-hold-comment').value:'';
+  const needComment=qsPickedStatus==='hold'||qsPickedStatus==='fail';
+  proc.comment=needComment?document.getElementById('qs-hold-comment').value:'';
   addAudit(qsJobId, proc.code, from, qsPickedStatus, proc.comment);
   pushStatusToGAS(qsJobId, qsProcIdx, qsPickedStatus, proc.comment);
   closeQS(); renderAll();
@@ -1218,20 +1322,21 @@ function openDetail(id) {
 function closeDetail(){ closeSheet('detail'); activeJob=null; }
 
 function renderTimeline() {
-  const icons={done:'check',wip:'autorenew',hold:'pause',pend:'circle'};
+  const icons={done:'check',wip:'autorenew',hold:'pause',fail:'cancel',pend:'circle'};
   document.getElementById('d-timeline').innerHTML=activeJob.processes.map((p,i)=>{
     const isLast=i===activeJob.processes.length-1;
     const badge={
       done:`<div class="sb done" style="font-size:11px"><span class="mi" style="font-size:12px">check_circle</span>เสร็จ</div>`,
       wip: `<div class="sb wip"  style="font-size:11px"><span class="spin mi" style="font-size:12px">autorenew</span>กำลังทำ</div>`,
       hold:`<div class="sb hold" style="font-size:11px"><span class="pulse"></span>HOLD</div>`,
+      fail:`<div class="sb fail" style="font-size:11px"><span class="mi" style="font-size:12px">cancel</span>ไม่สำเร็จ</div>`,
       pend:`<div class="sb pend" style="font-size:11px">รอ</div>`,
-    }[p.status];
+    }[p.status]||`<div class="sb pend" style="font-size:11px">รอ</div>`;
     return `
       <div class="tl-item">
         <div class="tl-col">
           <div class="tl-dot ${p.status}">
-            <span class="mi" style="font-size:13px;color:${p.status==='pend'?'#9aa0a6':'#fff'}">${icons[p.status]}</span>
+            <span class="mi" style="font-size:13px;color:${p.status==='pend'?'#9aa0a6':'#fff'}">${icons[p.status]||'circle'}</span>
           </div>
           ${!isLast?'<div class="tl-line"></div>':''}
         </div>
@@ -1268,22 +1373,23 @@ function openPS(jobId, procIdx) {
       el.classList.add(map[proc.status]);
     }
   });
-  document.getElementById('ps-hold-box').classList.toggle('on',proc.status==='hold');
+  document.getElementById('ps-hold-box').classList.toggle('on',proc.status==='hold'||proc.status==='fail');
   openSheet('ps');
 }
 function pickPS(el){
   psPickedStatus=el.dataset.v;
   document.querySelectorAll('#sh-ps .qs-opt').forEach(e=>e.className='qs-opt');
-  const map={pend:'sel-gray',wip:'sel-blue',done:'sel-green',hold:'sel-red'};
+  const map={pend:'sel-gray',wip:'sel-blue',done:'sel-green',hold:'sel-red',fail:'sel-orange'};
   el.classList.add(map[psPickedStatus]);
-  document.getElementById('ps-hold-box').classList.toggle('on',psPickedStatus==='hold');
+  document.getElementById('ps-hold-box').classList.toggle('on',psPickedStatus==='hold'||psPickedStatus==='fail');
 }
 function savePS(){
   if(!psJobId||psPickedStatus===null) return;
   const proc=jobs.find(j=>j.id===psJobId).processes[psProcIdx];
   const from=proc.status;
   proc.status=psPickedStatus;
-  proc.comment=psPickedStatus==='hold'?document.getElementById('ps-hold-comment').value:'';
+  const needComment=psPickedStatus==='hold'||psPickedStatus==='fail';
+  proc.comment=needComment?document.getElementById('ps-hold-comment').value:'';
   addAudit(psJobId,proc.code,from,psPickedStatus,proc.comment);
   pushStatusToGAS(psJobId,psProcIdx,psPickedStatus,proc.comment);
   closePS(); renderAll();
@@ -1687,6 +1793,81 @@ function loadDemo(){
       ])},
   ];
   saveLocal(); renderAll();
+}
+
+// ══ SUMMARY (สรุปรายการนัด) ══════════════════
+let sumCurrentDue='';
+
+function showSummary(){
+  const dues=[...new Set(jobs.map(j=>j.due))].sort();
+  const today=localISO();
+  const tabs=document.getElementById('sum-tabs');
+  tabs.innerHTML=dues.map(d=>`
+    <div class="bc-tab${d===today?' on':''}" data-due="${d}"
+      onclick="selectSumDate('${d}')">${fmtDate(d)}</div>
+  `).join('');
+  const active=dues.find(d=>d===today)||dues[0]||'';
+  sumCurrentDue=active;
+  if(active) renderSumText(active);
+  openSheet('sum');
+}
+function closeSum(){ closeSheet('sum'); }
+function selectSumDate(due){
+  sumCurrentDue=due;
+  document.querySelectorAll('#sum-tabs .bc-tab').forEach(el=>
+    el.classList.toggle('on',el.dataset.due===due));
+  renderSumText(due);
+}
+function buildSumText(due){
+  const list=jobs.filter(j=>j.due===due).sort((a,b)=>a.seq-b.seq);
+  if(!list.length) return '(ไม่มีงาน)';
+  const d=new Date(due+'T00:00:00');
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const yy=String(d.getFullYear()).slice(2);
+  let txt=`รายการนัด ${dd}/${mm}/${yy}\n`;
+  list.forEach(j=>{
+    txt+=`\n${j.seq}. ${j.product} -${j.qty.toLocaleString()}`;
+    // commitment line
+    const wp=j.processes.filter(p=>p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment));
+    if(wp.length){
+      const maxT=wp.reduce((m,p)=>p.commitment>m?p.commitment:m,'');
+      const codes=wp.map(p=>baseCode(p.code)).join('+');
+      txt+=`\n${codes} ${maxT}`;
+    }
+    // remark
+    if(j.remark) txt+=` ${j.remark}`;
+    // hold note
+    const holdProc=j.processes.find(p=>p.status==='hold'&&p.comment);
+    if(holdProc) txt+=`\nHOLD: ${holdProc.comment}`;
+  });
+  return txt;
+}
+function renderSumText(due){
+  const txt=buildSumText(due);
+  document.getElementById('sum-text').value=txt;
+  const cnt=jobs.filter(j=>j.due===due).length;
+  document.getElementById('sum-sub').textContent=`${fmtDate(due)} · ${cnt} งาน`;
+}
+async function copySum(){
+  const txt=document.getElementById('sum-text').value;
+  try{
+    await navigator.clipboard.writeText(txt);
+    const btn=document.getElementById('sum-copy-btn');
+    btn.innerHTML='<span class="mi">check</span>คัดลอกแล้ว!';
+    setTimeout(()=>btn.innerHTML='<span class="mi">content_copy</span>คัดลอก',2000);
+  }catch(e){
+    document.getElementById('sum-text').select();
+    document.execCommand('copy');
+  }
+}
+async function shareSum(){
+  const txt=document.getElementById('sum-text').value;
+  if(navigator.share){
+    try{ await navigator.share({text:txt}); }catch(e){}
+  } else {
+    copySum();
+  }
 }
 
 // ══ PROCESS CONFIG ════════════════════════════
