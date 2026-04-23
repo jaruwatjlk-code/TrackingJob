@@ -214,6 +214,16 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 }
 .fab .mi{font-size:19px}
 /* admin-only FABs */
+.fab-sheet{
+  position:fixed;bottom:140px;right:16px;z-index:20;
+  display:none;align-items:center;justify-content:center;
+  background:var(--green);color:#fff;border:none;
+  border-radius:50%;width:44px;height:44px;
+  cursor:pointer;box-shadow:0 4px 12px rgba(30,142,62,.35);
+  -webkit-tap-highlight-color:transparent;
+}
+.fab-sheet.on{display:flex}
+.fab-sheet .mi{font-size:20px}
 .fab-time{
   position:fixed;bottom:84px;right:16px;z-index:20;
   display:none;align-items:center;gap:6px;
@@ -482,6 +492,9 @@ input[type=file]{display:none}
 </div>
 
 <!-- FABs -->
+<button class="fab-sheet" id="fab-sheet" onclick="window.open(SHEET_URL,'_blank')">
+  <span class="mi">table_chart</span>
+</button>
 <button class="fab-time on" id="fab-time" onclick="showBatchCommit()">
   <span class="mi">schedule</span> ตั้งเวลา
 </button>
@@ -667,7 +680,8 @@ input[type=file]{display:none}
 <script>
 // ══ CONFIG ════════════════════════════════════
 const ADMIN_PASSWORD = 'admin1234'; // เปลี่ยนได้
-const GAS_URL = 'https://docs.google.com/spreadsheets/d/1Xf5S0dANIHssjvc1-1kmWSjOxMC83KZgEpKThddsKEc/edit?gid=1837720472#gid=1837720472';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWG4W57omvae2bboMmw9RfbSBknNwwqJGhLqqNz7yv_WqlMmYYHJ2G5l4eQr_WIDWt/exec';
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Xf5S0dANIHssjvc1-1kmWSjOxMC83KZgEpKThddsKEc/edit?gid=1837720472#gid=1837720472';
 const POLL_INTERVAL = 60000; // 60 วินาที
 
 // ══ PROCESS MAP ═══════════════════════════════
@@ -1345,6 +1359,7 @@ function updateAdminUI(){
   document.getElementById('admin-dot').classList.toggle('on',isAdmin);
   document.getElementById('avatar-label').textContent=isAdmin?'A':'ผู';
   document.getElementById('fab-time').classList.toggle('on',isAdmin);
+  document.getElementById('fab-sheet').classList.toggle('on',isAdmin);
   renderList();
 }
 function toggleAdmin(){
