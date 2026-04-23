@@ -214,6 +214,16 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 }
 .fab .mi{font-size:19px}
 /* admin-only FABs */
+.fab-pcfg{
+  position:fixed;bottom:196px;right:16px;z-index:20;
+  display:none;align-items:center;justify-content:center;
+  background:var(--gray);color:#fff;border:none;
+  border-radius:50%;width:44px;height:44px;
+  cursor:pointer;box-shadow:0 4px 12px rgba(95,99,104,.35);
+  -webkit-tap-highlight-color:transparent;
+}
+.fab-pcfg.on{display:flex}
+.fab-pcfg .mi{font-size:20px}
 .fab-sheet{
   position:fixed;bottom:140px;right:16px;z-index:20;
   display:none;align-items:center;justify-content:center;
@@ -224,6 +234,13 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 }
 .fab-sheet.on{display:flex}
 .fab-sheet .mi{font-size:20px}
+.pcfg-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0;border-bottom:1px solid var(--div);
+}
+.pcfg-row:last-child{border:none}
+.pcfg-code{font-family:'Google Sans';font-size:13px;font-weight:600;width:70px;flex-shrink:0}
+.pcfg-name{font-size:13px;color:var(--gray);flex:1}
 .fab-time{
   position:fixed;bottom:84px;right:16px;z-index:20;
   display:none;align-items:center;gap:6px;
@@ -539,6 +556,9 @@ input[type=file]{display:none}
 </div>
 
 <!-- FABs -->
+<button class="fab-pcfg" id="fab-pcfg" onclick="showPCfg()">
+  <span class="mi">settings</span>
+</button>
 <button class="fab-sheet" id="fab-sheet" onclick="window.open(SHEET_URL,'_blank')">
   <span class="mi">table_chart</span>
 </button>
@@ -649,6 +669,39 @@ input[type=file]{display:none}
   </div>
 </div>
 
+<!-- ══ PROCESS CONFIG SHEET (admin) ══ -->
+<div id="ov-pcfg" class="ov" onclick="closePCfg()"></div>
+<div id="sh-pcfg" class="sheet">
+  <div class="sh-handle"></div>
+  <div class="sh-head">
+    <div>
+      <div class="sh-title">จัดการ Process</div>
+      <div class="sh-sub">เพิ่ม/ลบ process code ที่ใช้ในโรงงาน</div>
+    </div>
+    <button class="sh-close" onclick="closePCfg()"><span class="mi" style="font-size:20px">close</span></button>
+  </div>
+  <div style="padding:0 16px 16px">
+    <div id="pcfg-list"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <input id="pcfg-code" placeholder="CODE (เช่น ST2)" maxlength="10"
+        style="flex:0 0 90px;border:1.5px solid var(--div);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;font-family:Roboto;text-transform:uppercase">
+      <input id="pcfg-name" placeholder="ชื่อเต็ม (เช่น Sort Tape)"
+        style="flex:1;border:1.5px solid var(--div);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;font-family:Roboto">
+      <button onclick="addPCfg()" style="
+        background:var(--blue);color:#fff;border:none;border-radius:8px;
+        padding:0 14px;font-family:'Google Sans';font-size:13px;cursor:pointer;flex-shrink:0">
+        เพิ่ม
+      </button>
+    </div>
+    <button onclick="resetPCfg()" style="
+      margin-top:10px;width:100%;padding:10px;border:1.5px solid var(--div);
+      border-radius:8px;font-family:'Google Sans';font-size:13px;cursor:pointer;
+      background:none;color:var(--gray)">
+      รีเซ็ตเป็นค่าเริ่มต้น
+    </button>
+  </div>
+</div>
+
 <!-- ══ BATCH COMMITMENT SHEET (admin) ══ -->
 <div id="ov-bc" class="ov" onclick="closeBC()"></div>
 <div id="sh-bc" class="sheet">
@@ -733,7 +786,7 @@ const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Xf5S0dANIHssjvc1-1kmW
 const POLL_INTERVAL = 60000; // 60 วินาที
 
 // ══ PROCESS MAP ═══════════════════════════════
-const PM = {
+const PM_DEFAULT = {
   PR:'Printing',PR1:'Printing',PR2nd:'Printing',
   SP:'Sort Print',SP2nd:'Sort Print',
   LA:'Laminating',DC:'Die Cutting',
@@ -742,6 +795,14 @@ const PM = {
   IS:'Inspection',CA:'Carton Assy',EM:'Embossing',
   AS:'Assembly',HS:'Heat Seal',FL:'Folding',OTH:'Other',
 };
+let PM = {};
+function loadPM() {
+  try {
+    const saved = localStorage.getItem('pt_pm');
+    PM = saved ? JSON.parse(saved) : {...PM_DEFAULT};
+  } catch(e) { PM = {...PM_DEFAULT}; }
+}
+function savePM() { localStorage.setItem('pt_pm', JSON.stringify(PM)); }
 function baseCode(c){ return c.replace(/\d+(st|nd|rd|th)$/i,'').replace(/\d+$/,'') || c; }
 
 // ══ STATE ═════════════════════════════════════
@@ -1362,23 +1423,35 @@ function saveBatchCommit(){
 }
 function closeBC(){ closeSheet('bc'); }
 
+function saveBCState(){
+  // flush DOM inputs → jobs array before any re-render
+  document.querySelectorAll('.bc-proc-time').forEach(inp=>{
+    const j=jobs.find(x=>x.id===inp.dataset.job);
+    const idx=parseInt(inp.dataset.idx);
+    if(j&&j.processes[idx]) j.processes[idx].commitment=inp.value;
+  });
+  document.querySelectorAll('[data-remark]').forEach(inp=>{
+    const j=jobs.find(x=>x.id===inp.dataset.remark);
+    if(j) j.remark=inp.value;
+  });
+  saveLocal();
+}
 function removeBCProc(jobId, idx){
+  saveBCState();
   const j=jobs.find(x=>x.id===jobId); if(!j) return;
   j.processes.splice(idx,1);
-  // re-index proc_idx
-  j.processes.forEach((p,i)=>p.proc_idx=i);
-  saveLocal();
   gasPost({action:'replaceJobProcs', jobId, processes:j.processes});
   renderBCList(bcCurrentDue);
 }
 function toggleBCPicker(jobId){
+  saveBCState();
   const p=document.getElementById('bc-picker-'+jobId);
   if(p) p.classList.toggle('on');
 }
 function doBCAddProc(jobId, code){
+  saveBCState();
   const j=jobs.find(x=>x.id===jobId); if(!j) return;
   j.processes.push({code, name:PM[code]||code, status:'pend', responsible:'', commitment:'', comment:''});
-  saveLocal();
   gasPost({action:'replaceJobProcs', jobId, processes:j.processes});
   renderBCList(bcCurrentDue);
 }
@@ -1507,6 +1580,7 @@ function updateAdminUI(){
   document.getElementById('avatar-label').textContent=isAdmin?'A':'ผู';
   document.getElementById('fab-time').classList.toggle('on',isAdmin);
   document.getElementById('fab-sheet').classList.toggle('on',isAdmin);
+  document.getElementById('fab-pcfg').classList.toggle('on',isAdmin);
   renderList();
 }
 function toggleAdmin(){
@@ -1615,7 +1689,46 @@ function loadDemo(){
   saveLocal(); renderAll();
 }
 
+// ══ PROCESS CONFIG ════════════════════════════
+function showPCfg(){ renderPCfgList(); openSheet('pcfg'); }
+function closePCfg(){ closeSheet('pcfg'); }
+function renderPCfgList(){
+  document.getElementById('pcfg-list').innerHTML=
+    Object.entries(PM).map(([code,name])=>`
+      <div class="pcfg-row">
+        <span class="pcfg-code">${code}</span>
+        <span class="pcfg-name">${name}</span>
+        <button onclick="delPCfg('${code}')" style="
+          background:none;border:none;cursor:pointer;color:#dadce0;
+          font-family:'Material Icons Round';font-size:18px;padding:4px;
+          -webkit-tap-highlight-color:transparent;
+        ">delete_outline</button>
+      </div>`).join('');
+}
+function addPCfg(){
+  const code=document.getElementById('pcfg-code').value.trim().toUpperCase();
+  const name=document.getElementById('pcfg-name').value.trim();
+  if(!code||!name) return;
+  PM[code]=name;
+  savePM();
+  document.getElementById('pcfg-code').value='';
+  document.getElementById('pcfg-name').value='';
+  renderPCfgList();
+}
+function delPCfg(code){
+  delete PM[code];
+  savePM();
+  renderPCfgList();
+}
+function resetPCfg(){
+  if(!confirm('รีเซ็ตกลับเป็นค่าเริ่มต้น?')) return;
+  PM={...PM_DEFAULT};
+  savePM();
+  renderPCfgList();
+}
+
 // ══ INIT ═════════════════════════════════════
+loadPM();
 setDate('prev');
 filterStatus('all');
 loadLocal();
