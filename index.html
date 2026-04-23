@@ -322,16 +322,29 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
   font-size:12px;font-weight:500;font-family:'Google Sans';
   cursor:pointer;border:1.5px solid var(--div);color:var(--gray);background:var(--surf)}
 .bc-tab.on{background:var(--purple-lt);color:var(--purple);border-color:var(--purple)}
-.bc-list{padding:0 16px 16px}
-.bc-row{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 0;border-bottom:1px solid var(--div);
+.bc-list{padding:0 12px 80px}
+.bc-card{background:var(--surf);border-radius:10px;box-shadow:var(--sh1);margin-bottom:10px;padding:12px 14px}
+.bc-card-head{font-family:'Google Sans';font-size:14px;font-weight:500;margin-bottom:2px}
+.bc-card-qty{font-size:11px;color:var(--gray);margin-bottom:10px}
+.bc-procs{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
+.bc-proc-item{display:flex;flex-direction:column;align-items:center;gap:3px}
+.bc-proc-code{font-size:10px;font-weight:700;color:var(--gray);font-family:'Google Sans';letter-spacing:.3px}
+.bc-proc-time{
+  border:1.5px solid var(--div);border-radius:8px;
+  padding:5px 4px;font-size:13px;font-family:'Roboto';
+  outline:none;width:74px;text-align:center;transition:border .12s;
 }
-.bc-row:last-child{border:none}
-.bc-job{flex:1;min-width:0}
-.bc-job-name{font-family:'Google Sans';font-size:13px;font-weight:500;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bc-proc{font-size:11px;color:var(--gray);margin-top:2px}
+.bc-proc-time:focus{border-color:var(--purple)}
+.bc-proc-time.has-val{border-color:var(--purple);background:var(--purple-lt);color:var(--purple)}
+.bc-remark{
+  width:100%;margin-top:10px;border:1.5px solid var(--div);border-radius:8px;
+  padding:6px 10px;font-size:12px;font-family:'Roboto';outline:none;color:var(--ink);
+}
+.bc-remark:focus{border-color:var(--purple)}
+.bc-result{
+  margin-top:8px;font-size:12px;font-weight:600;color:var(--purple);
+  display:flex;align-items:center;gap:3px;min-height:20px;
+}
 .bc-time{
   border:1.5px solid var(--div);border-radius:8px;
   padding:6px 8px;font-size:13px;font-family:'Roboto';
@@ -339,9 +352,11 @@ body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
 }
 .bc-time:focus{border-color:var(--purple)}
 .bc-save-btn{
-  display:block;width:calc(100% - 0px);margin:12px 0 0;
-  height:48px;border-radius:24px;font-family:'Google Sans';font-size:15px;
-  font-weight:500;cursor:pointer;border:none;background:var(--purple);color:#fff}
+  position:sticky;bottom:0;display:block;width:100%;margin:0;
+  height:52px;border-radius:0;font-family:'Google Sans';font-size:15px;
+  font-weight:500;cursor:pointer;border:none;background:var(--purple);color:#fff;
+  box-shadow:0 -2px 8px rgba(123,31,162,.2);
+}
 
 /* ── IMPORT ── */
 .drop-zone{
@@ -1196,40 +1211,65 @@ function selectBCDate(due){
   document.querySelectorAll('.bc-tab').forEach(el=>el.classList.toggle('on',el.dataset.due===due));
   renderBCList(due);
 }
-function renderBCList(due){
-  const rows=[];
-  jobs.filter(j=>j.due===due).forEach(j=>{
-    j.processes.forEach((p,i)=>{
-      rows.push({jobId:j.id,procIdx:i,product:j.product,procName:p.name,code:p.code,commitment:p.commitment});
-    });
+function bcResultPreview(j, domOverrides){
+  const procs=j.processes.map((p,i)=>{
+    const inp=domOverrides?domOverrides[i]:null;
+    const t=inp!==undefined&&inp!==null ? inp : (p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?p.commitment:'');
+    return {code:baseCode(p.code), time:t};
+  }).filter(p=>p.time);
+  if(!procs.length) return '';
+  const maxT=procs.reduce((m,p)=>p.time>m?p.time:m,'');
+  return `<span class="mi" style="font-size:13px">schedule</span>${procs.map(p=>p.code).join('+')} ${maxT}`;
+}
+function updateBCResult(jobId){
+  const j=jobs.find(x=>x.id===jobId); if(!j) return;
+  const ov={};
+  document.querySelectorAll(`.bc-proc-time[data-job="${jobId}"]`).forEach(inp=>{
+    ov[inp.dataset.idx]=inp.value;
+    inp.classList.toggle('has-val',!!inp.value);
   });
-  document.getElementById('bc-list').innerHTML=rows.length===0
-    ?'<div style="text-align:center;padding:32px;color:#9aa0a6;font-size:14px">ไม่มีงานในวันนี้</div>'
-    :`${rows.map((r,i)=>`
-      <div class="bc-row">
-        <div class="bc-job">
-          <div class="bc-job-name">${r.product}</div>
-          <div class="bc-proc">${r.procName} <span style="font-family:monospace;font-size:10px;color:#9aa0a6">${r.code}</span></div>
-        </div>
-        <input type="time" class="bc-time" data-job="${r.jobId}" data-idx="${r.procIdx}"
-          value="${r.commitment?toTimeVal(r.commitment):''}"
-          style="font-size:13px;width:90px">
-      </div>`).join('')}
-    <button class="bc-save-btn" onclick="saveBatchCommit()">
-      บันทึกเวลาทั้งหมด
-    </button>`;
+  document.getElementById('bc-result-'+jobId).innerHTML=bcResultPreview(j,ov);
+}
+function renderBCList(due){
+  const list=jobs.filter(j=>j.due===due);
+  const el=document.getElementById('bc-list');
+  if(!list.length){
+    el.innerHTML='<div style="text-align:center;padding:32px;color:#9aa0a6;font-size:14px">ไม่มีงานในวันนี้</div>';
+    return;
+  }
+  el.innerHTML=list.map(j=>`
+    <div class="bc-card">
+      <div class="bc-card-head"><span style="color:#9aa0a6;font-size:12px;font-weight:400;margin-right:4px">#${j.seq}</span>${j.product}</div>
+      <div class="bc-card-qty">${j.qty.toLocaleString()} ชิ้น</div>
+      <div class="bc-procs">
+        ${j.processes.map((p,i)=>`
+          <div class="bc-proc-item">
+            <span class="bc-proc-code">${baseCode(p.code)}</span>
+            <input type="time" class="bc-proc-time${p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?' has-val':''}"
+              data-job="${j.id}" data-idx="${i}"
+              value="${p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?p.commitment:''}"
+              oninput="updateBCResult('${j.id}')">
+          </div>`).join('')}
+      </div>
+      <input type="text" class="bc-remark" data-remark="${j.id}"
+        placeholder="หมายเหตุ..." value="${j.remark||''}">
+      <div class="bc-result" id="bc-result-${j.id}">${bcResultPreview(j,null)}</div>
+    </div>`).join('')+
+    `<button class="bc-save-btn" onclick="saveBatchCommit()">บันทึกเวลาทั้งหมด</button>`;
 }
 function saveBatchCommit(){
   const updates=[];
-  document.querySelectorAll('.bc-time').forEach(input=>{
-    const jobId=input.dataset.job, idx=parseInt(input.dataset.idx);
-    const val=input.value; // "HH:MM"
-    if(!val) return;
+  document.querySelectorAll('.bc-proc-time').forEach(inp=>{
+    const jobId=inp.dataset.job, idx=parseInt(inp.dataset.idx), val=inp.value;
     const job=jobs.find(j=>j.id===jobId);
     if(job){
       job.processes[idx].commitment=val;
       updates.push({jobId,procIdx:idx,commitment:val});
     }
+  });
+  document.querySelectorAll('[data-remark]').forEach(inp=>{
+    const job=jobs.find(j=>j.id===inp.dataset.remark);
+    if(job) job.remark=inp.value;
   });
   saveLocal();
   pushCommitmentToGAS(updates);
