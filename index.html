@@ -1012,8 +1012,11 @@ function renderCard(j, diff=0) {
         <div class="nodes">${nodes}</div>
         ${holdNote}
         ${(()=>{
-          const t=j.processes.filter(p=>p.commitment).map(p=>`${baseCode(p.code)} ${p.commitment}`).join(' · ');
-          return t?`<div class="jc-time"><span class="mi" style="font-size:13px;vertical-align:middle;margin-right:3px">schedule</span>${t}</div>`:'';
+          const wp=j.processes.filter(p=>p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment));
+          if(!wp.length) return '';
+          const maxT=wp.reduce((m,p)=>p.commitment>m?p.commitment:m,'');
+          const codes=wp.map(p=>baseCode(p.code)).join('+');
+          return `<div class="jc-time"><span class="mi" style="font-size:13px;vertical-align:middle;margin-right:3px">schedule</span>${codes} ${maxT}</div>`;
         })()}
         <div class="prog"><div class="prog-fill ${st}" style="width:${pct}%"></div></div>
       </div>
