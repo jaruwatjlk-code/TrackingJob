@@ -1517,5 +1517,301 @@ function deleteJob(jobId){
 }
 
 // ══ IMPORT ═══════════════════════════════════
+// ══ IMPORT ═══════════════════════════════════
 function showImport(){
-  document.getElementById('import-
+  document.getElementById('import-prev').style.display='none';
+  document.getElementById('file-input').value='';
+  pendingImport=[];
+  openSheet('import');
+}
+function closeImport(){ closeSheet('import'); }
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('on');
+  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+}
+function handleFile(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      parseExcel(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}));
+    } catch(err){ alert('อ่านไฟล์ไม่ได้: '+err.message); }
+  };
+  r.readAsArrayBuffer(file);
+}
+function parseExcel(rows){
+  let due=''; const out=[];
+  rows.forEach((row,ri)=>{
+    if(ri===0) return;
+    const prod=row[4],rem=row[6],seq=row[9],proc=row[39],dRaw=row[3];
+    if(dRaw && !prod){
+      if(typeof dRaw==='number'){
+        const d=new Date(Math.round((dRaw-25569)*86400*1000));
+        due=localISO(d);
+      }
+      return;
+    }
+    if(!prod||typeof rem!=='number') return;
+    const codes=proc?proc.replace(/_$/,'').split('_').filter(Boolean):['PR'];
+    out.push({
+      id:`${String(prod).trim()}_${due}`,
+      seq:Math.round(seq)||out.length+1,
+      product:String(prod).trim(),
+      qty:Math.abs(Math.round(rem)),
+      due,
+      processes:codes.map(c=>({code:c,name:PM[c]||c,status:'pend',responsible:'',commitment:'',comment:''})),
+    });
+  });
+  pendingImport=out; showPreview(out);
+}
+function showPreview(data){
+  const existMap=new Map(jobs.map(j=>[j.id,j]));
+  const newItems=data.filter(j=>!existMap.has(j.id));
+  const mergeItems=data.filter(j=>existMap.has(j.id));
+  document.getElementById('prev-count').textContent=`${data.length} งาน`;
+  document.getElementById('prev-dates').textContent=`ใหม่ ${newItems.length} · อัพเดท ${mergeItems.length}`;
+  document.getElementById('imp-cnt').textContent=data.length;
+  document.getElementById('prev-body').innerHTML=data.map(j=>{
+    const isNew=!existMap.has(j.id);
+    return `<tr>
+      <td style="color:var(--gray)">${j.seq}</td>
+      <td style="font-weight:500">${j.product}</td>
+      <td style="text-align:right;color:var(--gray)">${j.qty.toLocaleString()}</td>
+      <td style="font-family:monospace;font-size:10px;color:var(--gray)">
+        ${[...new Set(j.processes.map(p=>baseCode(p.code)))].join('→')}
+      </td>
+      <td style="color:var(--gray)">${j.due?j.due.slice(5).replace('-','/'):'—'}</td>
+      <td>${isNew?'<span class="new-badge">ใหม่</span>':'<span class="merge-badge">อัพเดท</span>'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('import-prev').style.display='block';
+}
+function confirmImport(){
+  if(!pendingImport.length) return;
+  const existMap=new Map(jobs.map(j=>[j.id,j]));
+  pendingImport.forEach(incoming=>{
+    if(existMap.has(incoming.id)){
+      const ex=existMap.get(incoming.id);
+      ex.qty=incoming.qty; ex.due=incoming.due; ex.seq=incoming.seq;
+      incoming.processes.forEach((np,i)=>{
+        if(ex.processes[i]){
+          ex.processes[i].code=np.code; ex.processes[i].name=np.name;
+        } else { ex.processes.push(np); }
+      });
+    } else { jobs.push(incoming); }
+  });
+  saveLocal();
+  pushImportToGAS(pendingImport);
+  pendingImport=[];
+  closeImport(); renderAll();
+}
+
+// ══ ADMIN ═════════════════════════════════════
+function updateAdminUI(){
+  document.getElementById('admin-dot').classList.toggle('on',isAdmin);
+  document.getElementById('avatar-label').textContent=isAdmin?'A':'ผู';
+  document.getElementById('fab-time').classList.toggle('on',isAdmin);
+  document.getElementById('fab-sheet').classList.toggle('on',isAdmin);
+  document.getElementById('fab-pcfg').classList.toggle('on',isAdmin);
+  renderList();
+}
+function toggleAdmin(){
+  if(isAdmin){ isAdmin=false; updateAdminUI(); return; }
+  openSheet('pin');
+  setTimeout(()=>document.getElementById('pin-input').focus(),300);
+}
+function confirmPin(){
+  const val=document.getElementById('pin-input').value;
+  if(val===ADMIN_PASSWORD){
+    isAdmin=true; closePin(); updateAdminUI();
+  } else {
+    document.getElementById('pin-err').classList.add('on');
+    document.getElementById('pin-input').value='';
+  }
+}
+function clearPinErr(){ document.getElementById('pin-err').classList.remove('on'); }
+function closePin(){ closeSheet('pin'); document.getElementById('pin-input').value=''; clearPinErr(); }
+
+// ══ SHEET HELPERS ════════════════════════════
+function openSheet(n){
+  document.getElementById('ov-'+n).classList.add('on');
+  document.getElementById('sh-'+n).classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function closeSheet(n){
+  document.getElementById('ov-'+n).classList.remove('on');
+  document.getElementById('sh-'+n).classList.remove('on');
+  if(!document.querySelector('.sheet.on')) document.body.style.overflow='';
+}
+
+// ══ SUMMARY ══════════════════════════════════
+let sumCurrentDue='';
+function showSummary(){
+  const dues=[...new Set(jobs.map(j=>j.due))].sort();
+  const today=localISO();
+  const tabs=document.getElementById('sum-tabs');
+  tabs.innerHTML=dues.map(d=>`
+    <div class="bc-tab${d===today?' on':''}" data-due="${d}"
+      onclick="selectSumDate('${d}')">${fmtDate(d)}</div>
+  `).join('');
+  const active=dues.find(d=>d===today)||dues[0]||'';
+  sumCurrentDue=active;
+  if(active) renderSumText(active);
+  openSheet('sum');
+}
+function closeSum(){ closeSheet('sum'); }
+function selectSumDate(due){
+  sumCurrentDue=due;
+  document.querySelectorAll('#sum-tabs .bc-tab').forEach(el=>
+    el.classList.toggle('on',el.dataset.due===due));
+  renderSumText(due);
+}
+function buildSumText(due){
+  const list=jobs.filter(j=>j.due===due).sort((a,b)=>a.seq-b.seq);
+  if(!list.length) return '(ไม่มีงาน)';
+  const d=new Date(due+'T00:00:00');
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const yy=String(d.getFullYear()).slice(2);
+  let txt=`รายการนัด ${dd}/${mm}/${yy}\n`;
+  list.forEach(j=>{
+    txt+=`\n${j.seq}. ${j.product} -${j.qty.toLocaleString()}`;
+    const wp=j.processes.filter(p=>p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment));
+    if(wp.length){
+      const maxT=wp.reduce((m,p)=>p.commitment>m?p.commitment:m,'');
+      const codes=wp.map(p=>baseCode(p.code)).join('+');
+      txt+=`\n${codes} ${maxT}`;
+    }
+    if(j.remark) txt+=` ${j.remark}`;
+    const holdProc=j.processes.find(p=>p.status==='hold'&&p.comment);
+    if(holdProc) txt+=`\nHOLD: ${holdProc.comment}`;
+  });
+  return txt;
+}
+function renderSumText(due){
+  document.getElementById('sum-text').value=buildSumText(due);
+  const cnt=jobs.filter(j=>j.due===due).length;
+  document.getElementById('sum-sub').textContent=`${fmtDate(due)} · ${cnt} งาน`;
+}
+async function copySum(){
+  const txt=document.getElementById('sum-text').value;
+  try{
+    await navigator.clipboard.writeText(txt);
+    const btn=document.getElementById('sum-copy-btn');
+    btn.innerHTML='<span class="mi">check</span>คัดลอกแล้ว!';
+    setTimeout(()=>btn.innerHTML='<span class="mi">content_copy</span>คัดลอก',2000);
+  }catch(e){
+    document.getElementById('sum-text').select();
+    document.execCommand('copy');
+  }
+}
+async function shareSum(){
+  const txt=document.getElementById('sum-text').value;
+  if(navigator.share){ try{ await navigator.share({text:txt}); }catch(e){} }
+  else { copySum(); }
+}
+
+// ══ PROCESS CONFIG ════════════════════════════
+function showPCfg(){ renderPCfgList(); openSheet('pcfg'); }
+function closePCfg(){ closeSheet('pcfg'); }
+function renderPCfgList(){
+  document.getElementById('pcfg-list').innerHTML=
+    Object.entries(PM).map(([code,name])=>`
+      <div class="pcfg-row">
+        <span class="pcfg-code">${code}</span>
+        <span class="pcfg-name">${name}</span>
+        <button onclick="delPCfg('${code}')" style="
+          background:none;border:none;cursor:pointer;color:#dadce0;
+          font-family:'Material Icons Round';font-size:18px;padding:4px;
+          -webkit-tap-highlight-color:transparent;">delete_outline</button>
+      </div>`).join('');
+}
+function addPCfg(){
+  const code=document.getElementById('pcfg-code').value.trim().toUpperCase();
+  const name=document.getElementById('pcfg-name').value.trim();
+  if(!code||!name) return;
+  PM[code]=name; savePM();
+  document.getElementById('pcfg-code').value='';
+  document.getElementById('pcfg-name').value='';
+  renderPCfgList();
+}
+function delPCfg(code){ delete PM[code]; savePM(); renderPCfgList(); }
+function resetPCfg(){
+  if(!confirm('รีเซ็ตกลับเป็นค่าเริ่มต้น?')) return;
+  PM={...PM_DEFAULT}; savePM(); renderPCfgList();
+}
+
+// ══ UTILS ════════════════════════════════════
+function fmtDate(iso){
+  if(!iso) return '—';
+  const s=String(iso).slice(0,10);
+  const d=new Date(s+'T00:00:00');
+  if(isNaN(d)) return iso;
+  const days=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+  const mons=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${days[d.getDay()]} ${d.getDate()} ${mons[d.getMonth()]}`;
+}
+function localISO(d=new Date()){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtTime(d){
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ══ DEMO DATA ════════════════════════════════
+function loadDemo(){
+  const mkp=(route,ov=[])=>route.replace(/_$/,'').split('_').filter(Boolean).map((c,i)=>({
+    code:c,name:PM[c]||c,status:ov[i]?.s||'pend',
+    responsible:ov[i]?.r||'',commitment:ov[i]?.c||'',comment:ov[i]?.note||'',
+  }));
+  jobs=[
+    {id:'LION(1692.F)_2026-04-17',seq:1,product:'LION(1692.F)',qty:28200,due:'2026-04-17',
+      processes:mkp('PR_IS_CA_EM_DC_GL_',[
+        {s:'done',r:'กะ A',c:'15/04 08:00'},{s:'done',r:'กะ A',c:'16/04 12:00'},
+        {s:'hold',r:'กะ A',c:'17/04 06:00',note:'สีเพี้ยน รอ proof อีก 1 วัน'},
+        {s:'pend',r:'กะ B',c:'17/04 14:00'},{s:'pend',r:'กะ B',c:'17/04 20:00'},{s:'pend',r:'กะ B',c:'18/04 08:00'},
+      ])},
+    {id:'GLICO(382)_2026-04-17',seq:2,product:'GLICO(382)',qty:1660,due:'2026-04-17',
+      processes:mkp('PR_SP_DC_GL_',[
+        {s:'done',r:'กะ A',c:'15/04 10:00'},{s:'done',r:'กะ A',c:'16/04 08:00'},
+        {s:'wip', r:'กะ A',c:'17/04 02:00'},{s:'pend',r:'กะ B',c:'17/04 12:00'},
+      ])},
+    {id:'MB(828R01.S)_2026-04-17',seq:3,product:'MB(828R01.S)',qty:23000,due:'2026-04-17',
+      processes:mkp('PR_SP_PR2nd_SP2nd_BT_DC_IJ_GP_',[
+        {s:'done',r:'กะ A',c:'14/04 08:00'},{s:'done',r:'กะ A',c:'14/04 16:00'},
+        {s:'done',r:'กะ A',c:'15/04 08:00'},{s:'done',r:'กะ A',c:'15/04 16:00'},
+        {s:'wip', r:'กะ B',c:'16/04 06:00'},{s:'pend',r:'กะ B',c:'16/04 14:00'},
+        {s:'pend',r:'กะ B',c:'17/04 06:00'},{s:'pend',r:'กะ B',c:'17/04 14:00'},
+      ])},
+    {id:'DUTCH(034)_2026-04-18',seq:1,product:'DUTCH(034)',qty:49600,due:'2026-04-18',
+      processes:mkp('PR_SP_BT_DC_GP_',[
+        {s:'wip', r:'กะ A',c:'17/04 08:00'},{s:'pend',r:'กะ A',c:'18/04 06:00'},
+        {s:'pend',r:'กะ B',c:'18/04 14:00'},{s:'pend',r:'กะ B',c:'19/04 06:00'},{s:'pend',r:'กะ B',c:'19/04 14:00'},
+      ])},
+    {id:'DUTCH(035)_2026-04-18',seq:2,product:'DUTCH(035)',qty:50000,due:'2026-04-18',
+      processes:mkp('PR_SP_BT_DC_GP_',[
+        {s:'pend'},{s:'pend'},{s:'pend'},{s:'pend'},{s:'pend'},
+      ])},
+    {id:'NIKON(350)_2026-04-17',seq:3,product:'NIKON(350)',qty:800,due:'2026-04-17',
+      processes:mkp('PR_SP_LA_DC_MGL_',[
+        {s:'done',r:'กะ A',c:'15/04 08:00'},{s:'done',r:'กะ A',c:'16/04 08:00'},
+        {s:'done',r:'กะ A',c:'16/04 16:00'},{s:'done',r:'กะ B',c:'17/04 06:00'},{s:'done',r:'กะ B',c:'17/04 14:00'},
+      ])},
+  ];
+  saveLocal(); renderAll();
+}
+
+// ══ INIT ═════════════════════════════════════
+loadPM();
+setDate('prev');
+filterStatus('all');
+loadLocal();
+if(jobs.length===0) loadDemo();
+fetchFromGAS();
+startPolling();
+setSyncBadge('ok');
+</script>
+</body>
+</html>
