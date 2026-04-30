@@ -1,1817 +1,1059 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Production Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --blue:#1a73e8;--blue-lt:#e8f0fe;
-  --green:#1e8e3e;--green-lt:#e6f4ea;
-  --red:#d93025;--red-lt:#fce8e6;
-  --amber:#f9ab00;--amber-lt:#fef7e0;
-  --orange:#e8710a;--orange-lt:#fde8d4;
-  --purple:#7b1fa2;--purple-lt:#f3e5f5;
-  --gray:#5f6368;--gray-lt:#f1f3f4;
-  --ink:#202124;--div:#e0e0e0;--surf:#fff;--bg:#f8f9fa;
-  --sh1:0 1px 2px rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
-  --sh2:0 1px 2px rgba(60,64,67,.3),0 2px 6px 2px rgba(60,64,67,.15);
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e;font-size:14px;}
+
+/* ── TOP BAR ── */
+.topbar{background:#fff;border-bottom:1px solid #e0e0e0;padding:0 20px;height:56px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.topbar-title{font-size:17px;font-weight:700;color:#1a1a2e;flex:0 0 auto;}
+.sync-badge{background:#e8f5e9;color:#2e7d32;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;}
+.sync-badge:hover{background:#c8e6c9;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.avatar{width:34px;height:34px;border-radius:50%;background:#5c6bc0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;cursor:pointer;}
+.btn-icon{background:none;border:1px solid #ddd;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px;color:#555;display:flex;align-items:center;gap:4px;}
+.btn-icon:hover{background:#f5f5f5;}
+
+/* ── CONTENT WRAPPER ── */
+.content{padding:16px 20px;max-width:1400px;margin:0 auto;}
+
+/* ── SUMMARY PILLS ── */
+.summary-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.sum-pill{background:#fff;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.sum-pill .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.dot-done{background:#43a047;}
+.dot-partial{background:#fb8c00;}
+.dot-fail{background:#e53935;}
+.dot-wip{background:#1e88e5;}
+.dot-hold{background:#8e24aa;}
+.dot-pend{background:#9e9e9e;}
+
+/* ── FILTER ROW ── */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+.filter-input{border:1px solid #ddd;border-radius:8px;padding:6px 12px;font-size:13px;background:#fff;outline:none;color:#333;}
+.filter-input:focus{border-color:#5c6bc0;}
+.filter-select{border:1px solid #ddd;border-radius:8px;padding:6px 10px;font-size:13px;background:#fff;outline:none;color:#333;}
+.chips-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.chip{border:1px solid #ddd;border-radius:16px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#555;transition:all .15s;}
+.chip:hover{background:#ede7f6;border-color:#5c6bc0;color:#5c6bc0;}
+.chip.active{background:#5c6bc0;color:#fff;border-color:#5c6bc0;}
+.chip-status.cs-done.active{background:#43a047;border-color:#43a047;}
+.chip-status.cs-wip.active{background:#1e88e5;border-color:#1e88e5;}
+.chip-status.cs-hold.active{background:#8e24aa;border-color:#8e24aa;}
+.chip-status.cs-fail.active{background:#e53935;border-color:#e53935;}
+.chip-status.cs-partial.active{background:#fb8c00;border-color:#fb8c00;}
+.chip-status.cs-pend.active{background:#9e9e9e;border-color:#9e9e9e;}
+
+/* ── TABLE ── */
+.table-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden;margin-bottom:16px;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;min-width:800px;}
+thead tr{background:#f7f8fa;}
+th{padding:10px 14px;text-align:left;font-size:12px;font-weight:700;color:#888;border-bottom:1px solid #eeeeee;white-space:nowrap;}
+td{padding:10px 14px;border-bottom:1px solid #f0f0f0;vertical-align:middle;font-size:13px;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#fafafa;}
+
+/* date-group header row */
+.date-group-row td{background:#f7f8fa;font-weight:700;color:#5c6bc0;font-size:12px;padding:6px 14px;border-bottom:1px solid #eeeeee;}
+
+/* process badges */
+.proc-list{display:flex;gap:4px;flex-wrap:wrap;}
+.proc-badge{display:inline-flex;align-items:center;justify-content:center;width:30px;height:22px;border-radius:5px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;transition:opacity .15s;}
+.proc-badge:hover{opacity:.8;}
+.pb-done{background:#43a047;}
+.pb-wip{background:#1e88e5;}
+.pb-hold{background:#8e24aa;}
+.pb-fail{background:#e53935;}
+.pb-partial{background:#fb8c00;}
+.pb-pend{background:#bdbdbd;}
+
+/* status badge */
+.status-badge{display:inline-flex;align-items:center;gap:5px;border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;}
+.sb-done{background:#e8f5e9;color:#2e7d32;}
+.sb-wip{background:#e3f2fd;color:#1565c0;}
+.sb-hold{background:#f3e5f5;color:#6a1b9a;}
+.sb-fail{background:#ffebee;color:#c62828;}
+.sb-partial{background:#fff3e0;color:#e65100;}
+.sb-pend{background:#f5f5f5;color:#757575;}
+.sb-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.sbd-done{background:#43a047;}.sbd-wip{background:#1e88e5;}.sbd-hold{background:#8e24aa;}
+.sbd-fail{background:#e53935;}.sbd-partial{background:#fb8c00;}.sbd-pend{background:#9e9e9e;}
+
+/* person pill */
+.person-pill{background:#e8f5e9;color:#2e7d32;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:600;margin:2px;}
+
+/* row-num */
+.row-num{color:#aaa;font-size:12px;font-weight:600;}
+
+/* job-name link */
+.job-name-link{color:#1a1a2e;font-weight:600;cursor:pointer;}
+.job-name-link:hover{color:#5c6bc0;text-decoration:underline;}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#5c6bc0;color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(92,107,192,.4);display:flex;align-items:center;justify-content:center;z-index:200;}
+.fab:hover{background:#3949ab;}
+
+/* ── OVERLAY + BOTTOM SHEET ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:none;align-items:flex-end;justify-content:center;}
+.overlay.open{display:flex;}
+.sheet{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:20px;transform:translateY(100%);transition:transform .3s ease;}
+.overlay.open .sheet{transform:translateY(0);}
+.sheet-handle{width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 16px;}
+.sheet-title{font-size:16px;font-weight:700;margin-bottom:16px;color:#1a1a2e;}
+.sheet-close{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:#888;margin-top:-2px;}
+
+/* form elements inside sheet */
+.form-row{margin-bottom:14px;}
+.form-label{font-size:12px;font-weight:600;color:#666;margin-bottom:4px;display:block;}
+.form-input{width:100%;border:1px solid #ddd;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;color:#333;}
+.form-input:focus{border-color:#5c6bc0;}
+textarea.form-input{resize:vertical;min-height:70px;}
+.form-select{width:100%;border:1px solid #ddd;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;background:#fff;color:#333;}
+
+/* status picker grid */
+.status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.status-opt{border:2px solid #ddd;border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;}
+.status-opt:hover{border-color:#5c6bc0;}
+.status-opt.picked{border-color:var(--c);background:var(--c);color:#fff;}
+.status-opt[data-v="done"]{--c:#43a047;color:#43a047;}
+.status-opt[data-v="wip"]{--c:#1e88e5;color:#1e88e5;}
+.status-opt[data-v="hold"]{--c:#8e24aa;color:#8e24aa;}
+.status-opt[data-v="fail"]{--c:#e53935;color:#e53935;}
+.status-opt[data-v="partial"]{--c:#fb8c00;color:#fb8c00;}
+.status-opt[data-v="pend"]{--c:#9e9e9e;color:#9e9e9e;}
+.status-opt.picked{color:#fff!important;}
+
+/* process list in bottom-sheet */
+.proc-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;}
+.proc-row:last-child{border-bottom:none;}
+.proc-row .proc-code{min-width:36px;text-align:center;font-weight:700;font-size:12px;background:#ede7f6;color:#5c6bc0;border-radius:5px;padding:2px 6px;}
+.proc-row .proc-name{flex:1;font-size:13px;}
+.proc-status-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;}
+.proc-actions{display:flex;gap:6px;}
+.proc-btn{border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:600;}
+.proc-btn-edit{background:#e3f2fd;color:#1565c0;}
+.proc-btn-del{background:#ffebee;color:#c62828;}
+
+/* Drag handle */
+.drag-handle{cursor:grab;color:#ccc;font-size:16px;padding:0 4px;}
+.drag-handle:active{cursor:grabbing;}
+
+/* buttons */
+.btn{border:none;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn-primary{background:#5c6bc0;color:#fff;}
+.btn-primary:hover{background:#3949ab;}
+.btn-danger{background:#e53935;color:#fff;}
+.btn-danger:hover{background:#b71c1c;}
+.btn-ghost{background:#f5f5f5;color:#555;}
+.btn-ghost:hover{background:#e0e0e0;}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+.btn-full{width:100%;}
+
+/* audit log */
+.audit-item{padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555;}
+.audit-item:last-child{border-bottom:none;}
+.audit-time{color:#aaa;font-size:11px;}
+
+/* remark display */
+.remark-cell{color:#888;font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* empty state */
+.empty-state{text-align:center;padding:48px 20px;color:#bbb;}
+.empty-state svg{margin-bottom:12px;}
+
+/* loading */
+.loading-bar{height:3px;background:linear-gradient(90deg,#5c6bc0,#7986cb,#5c6bc0);background-size:200%;animation:lb 1.2s infinite;position:fixed;top:0;left:0;right:0;z-index:9999;display:none;}
+@keyframes lb{0%{background-position:0%}100%{background-position:200%}}
+.loading-bar.show{display:block;}
+
+/* toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#323232;color:#fff;border-radius:8px;padding:10px 20px;font-size:14px;opacity:0;transition:all .3s;z-index:9999;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* responsive */
+@media(max-width:640px){
+  .content{padding:10px 12px;}
+  .filter-row{gap:6px;}
+  .chips-row{gap:4px;}
+  .chip{font-size:11px;padding:3px 9px;}
 }
-body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--ink);
-  -webkit-font-smoothing:antialiased;overscroll-behavior:none}
-.gs{font-family:'Google Sans',sans-serif}
-.mi{font-family:'Material Icons Round';font-style:normal;line-height:1;
-  letter-spacing:normal;text-transform:none;white-space:nowrap;
-  word-wrap:normal;direction:ltr;-webkit-font-feature-settings:'liga';
-  -webkit-font-smoothing:antialiased}
-.top-bar{
-  background:var(--surf);position:sticky;top:0;z-index:30;
-  border-bottom:1px solid var(--div);
-  display:flex;align-items:center;padding:0 12px;height:52px;gap:8px;
-}
-.top-bar-title{font-family:'Google Sans';font-size:17px;font-weight:500;flex:1;min-width:0}
-.sync-badge{font-size:10px;color:#9aa0a6;white-space:nowrap;display:flex;align-items:center;gap:3px}
-.sync-badge.offline{color:var(--red)}
-.sync-badge.syncing .mi{animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.hold-pill{
-  display:none;align-items:center;gap:3px;
-  background:var(--red-lt);color:var(--red);
-  font-size:12px;font-weight:500;font-family:'Google Sans';
-  padding:5px 10px;border-radius:14px;cursor:pointer;border:none;
-  -webkit-tap-highlight-color:transparent;flex-shrink:0;
-}
-.hold-pill.on{display:flex}
-.avatar{
-  width:32px;height:32px;border-radius:50%;
-  background:var(--blue);color:#fff;font-family:'Google Sans';
-  font-size:12px;font-weight:500;display:flex;align-items:center;
-  justify-content:center;cursor:pointer;flex-shrink:0;position:relative;
-}
-.admin-dot{
-  position:absolute;top:-2px;right:-2px;width:10px;height:10px;
-  border-radius:50%;background:var(--amber);border:2px solid var(--surf);
-  display:none;
-}
-.admin-dot.on{display:block}
-.filter-bar{
-  background:var(--surf);position:sticky;top:52px;z-index:29;
-  border-bottom:1px solid var(--div);padding:7px 0 6px;
-}
-.filter-scroll{
-  display:flex;gap:6px;overflow-x:auto;padding:0 12px;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch;
-}
-.filter-scroll::-webkit-scrollbar{display:none}
-.chip{
-  flex-shrink:0;padding:4px 12px;border-radius:14px;
-  font-size:12px;font-weight:500;font-family:'Google Sans';
-  cursor:pointer;border:1.5px solid var(--div);
-  background:var(--surf);color:var(--gray);
-  white-space:nowrap;-webkit-tap-highlight-color:transparent;
-  transition:all .12s;user-select:none;
-}
-.chip:active{opacity:.7}
-.chip.on{background:var(--blue-lt);color:var(--blue);border-color:var(--blue)}
-.search-wrap{padding:10px 12px 0}
-.search-bar{
-  display:flex;align-items:center;gap:8px;
-  background:var(--surf);border-radius:22px;
-  padding:0 14px;height:42px;box-shadow:var(--sh1);
-}
-.search-bar input{
-  flex:1;border:none;outline:none;font-size:14px;
-  font-family:'Roboto';color:var(--ink);background:transparent;min-width:0;
-}
-.search-bar input::placeholder{color:#9aa0a6}
-.search-bar .mi{color:#9aa0a6;font-size:19px;flex-shrink:0}
-.vdiv{width:1px;height:20px;background:var(--div);flex-shrink:0}
-.proc-sel{
-  border:none;outline:none;font-size:13px;color:var(--gray);
-  font-family:Roboto;background:transparent;cursor:pointer;
-  padding:0 2px;max-width:110px;flex-shrink:0;
-}
-.stat-row{display:flex;gap:8px;padding:10px 12px 0;overflow-x:auto;scrollbar-width:none}
-.stat-row::-webkit-scrollbar{display:none}
-.stat-card{
-  flex:1;min-width:60px;flex-shrink:0;background:var(--surf);
-  border-radius:10px;padding:10px 8px;box-shadow:var(--sh1);
-  cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;
-  border:2px solid transparent;transition:border-color .12s,background .12s;
-  -webkit-tap-highlight-color:transparent;
-}
-.stat-card.on{border-color:var(--blue);background:var(--blue-lt)}
-.stat-num{font-family:'Google Sans';font-size:20px;font-weight:700;line-height:1}
-.stat-lbl{font-size:10px;color:var(--gray);font-weight:500}
-.stat-pct{font-size:9px;color:#9aa0a6;font-family:'Google Sans';margin-top:1px}
-.stat-card.on .stat-lbl{color:var(--blue)}
-.stat-bar{display:flex;height:4px;border-radius:2px;overflow:hidden;margin:6px 12px 0;gap:1px}
-.stat-bar-seg{transition:flex .4s;min-width:0}
-.date-group{padding:14px 12px 5px;display:flex;align-items:center;gap:6px}
-.date-txt{font-family:'Google Sans';font-size:12px;font-weight:500;color:var(--gray)}
-.badge-over{background:var(--red-lt);color:var(--red);font-size:11px;font-weight:500;padding:2px 7px;border-radius:9px}
-.badge-today{background:var(--amber-lt);color:#b06000;font-size:11px;font-weight:500;padding:2px 7px;border-radius:9px}
-.date-count{margin-left:auto;font-size:11px;color:#9aa0a6}
-.job-card{
-  background:var(--surf);margin:0 12px 8px;border-radius:10px;
-  box-shadow:var(--sh1);cursor:pointer;
-  border-left:4px solid var(--div);
-  overflow:hidden;
-  transition:box-shadow .12s,transform .1s;
-  -webkit-tap-highlight-color:transparent;user-select:none;
-}
-.job-card:active{transform:scale(.99)}
-.job-card.s-hold{border-left-color:var(--red)}
-.job-card.s-wip {border-left-color:var(--blue)}
-.job-card.s-done{border-left-color:var(--green)}
-.job-card.s-fail{border-left-color:var(--orange)}
-.job-card.pressing{box-shadow:var(--sh2);transform:scale(.98);background:#fafafa}
-.job-card.due-over{background:#fff8f7}
-.job-card.due-today{background:#fffbf0}
-.jc-inner{padding:11px 12px}
-.jc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:9px}
-.jc-name{font-family:'Google Sans';font-size:15px;font-weight:500;color:var(--ink)}
-.jc-qty{font-size:11px;color:var(--gray);margin-top:2px}
-.jc-due-chip{font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;margin-top:4px;display:inline-flex;align-items:center;gap:2px}
-.jc-due-chip.over{background:var(--red-lt);color:var(--red)}
-.jc-due-chip.today{background:var(--amber-lt);color:#b06000}
-.jc-hold-note{display:flex;align-items:center;gap:4px;margin-top:6px;padding:5px 8px;border-radius:7px;background:var(--red-lt);color:var(--red);font-size:11px;font-weight:500}
-.jc-time{font-size:11px;color:var(--blue);font-weight:500;margin-top:4px;display:flex;align-items:center}
-.section-hdr{display:flex;align-items:center;gap:5px;padding:16px 12px 3px;font-family:'Google Sans';font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
-.section-hdr.overdue{color:var(--red)}
-.section-hdr.today{color:#b06000}
-.section-hdr.future{color:var(--gray)}
-.section-hdr .mi{font-size:13px}
-.jc-right{display:flex;align-items:center;gap:5px;flex-shrink:0}
-.sb{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;
-  border-radius:10px;font-size:11px;font-weight:500;font-family:'Google Sans';
-  white-space:nowrap;flex-shrink:0}
-.sb.done{background:var(--green-lt);color:var(--green)}
-.sb.wip{background:var(--blue-lt);color:var(--blue)}
-.sb.wip .spin{display:inline-block;animation:spin .8s linear infinite}
-.sb.hold{background:var(--red-lt);color:var(--red)}
-.sb.hold .pulse{display:inline-block;width:7px;height:7px;border-radius:50%;
-  background:var(--red);animation:pulse 1s ease infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
-.sb.pend{background:var(--gray-lt);color:var(--gray)}
-.sb.fail{background:var(--orange-lt);color:var(--orange)}
-.nodes{
-  display:flex;align-items:center;margin-bottom:8px;
-  overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
-  padding-bottom:2px;
-}
-.nodes::-webkit-scrollbar{display:none}
-.node{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
-.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.dot.done  {background:var(--green)}
-.dot.wip   {background:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
-.dot.hold  {background:var(--red); box-shadow:0 0 0 3px var(--red-lt);animation:dotpulse 1s ease infinite}
-@keyframes dotpulse{0%,100%{box-shadow:0 0 0 3px var(--red-lt)}50%{box-shadow:0 0 0 5px var(--red-lt)}}
-.dot.pend  {background:#e8eaed;border:1.5px solid #bdc1c6}
-.dot.fail  {background:var(--orange)}
-.node-lbl{font-size:9px;font-weight:500;line-height:1}
-.node-lbl.done{color:var(--green)}.node-lbl.wip{color:var(--blue)}
-.node-lbl.hold{color:var(--red)}.node-lbl.pend{color:#9aa0a6}
-.edge{height:2px;flex:1;min-width:6px;max-width:18px;margin-bottom:12px;flex-shrink:0}
-.edge.done{background:var(--green);opacity:.4}
-.edge.pend{background:#e8eaed}
-.prog{height:3px;background:#e8eaed;border-radius:2px;overflow:hidden}
-.prog-fill{height:100%;border-radius:2px;transition:width .4s}
-.prog-fill.done{background:var(--green)}.prog-fill.wip{background:var(--blue)}
-.prog-fill.hold{background:var(--red)}.prog-fill.pend{background:#dadce0}
-.lp-hint{font-size:10px;color:#bdc1c6;text-align:right;padding:0 12px 7px;
-  font-family:'Google Sans';display:none}
-.lp-hint.show{display:block}
-.fab{
-  position:fixed;bottom:20px;right:16px;z-index:20;
-  display:flex;align-items:center;gap:6px;
-  background:var(--blue);color:#fff;border:none;
-  border-radius:14px;padding:0 18px;height:52px;
-  font-family:'Google Sans';font-size:14px;font-weight:500;
-  cursor:pointer;box-shadow:0 4px 12px rgba(26,115,232,.4);
-  -webkit-tap-highlight-color:transparent;
-}
-.fab .mi{font-size:19px}
-.fab-summary{
-  position:fixed;bottom:16px;left:16px;z-index:20;
-  display:flex;align-items:center;gap:6px;
-  background:var(--ink);color:#fff;border:none;
-  border-radius:14px;padding:0 18px;height:48px;
-  font-family:'Google Sans';font-size:14px;font-weight:500;
-  cursor:pointer;box-shadow:0 4px 12px rgba(32,33,36,.35);
-  -webkit-tap-highlight-color:transparent;
-}
-.fab-summary .mi{font-size:18px}
-.fab-pcfg{
-  position:fixed;bottom:196px;right:16px;z-index:20;
-  display:none;align-items:center;justify-content:center;
-  background:var(--gray);color:#fff;border:none;
-  border-radius:50%;width:44px;height:44px;
-  cursor:pointer;box-shadow:0 4px 12px rgba(95,99,104,.35);
-  -webkit-tap-highlight-color:transparent;
-}
-.fab-pcfg.on{display:flex}
-.fab-pcfg .mi{font-size:20px}
-.fab-sheet{
-  position:fixed;bottom:140px;right:16px;z-index:20;
-  display:none;align-items:center;justify-content:center;
-  background:var(--green);color:#fff;border:none;
-  border-radius:50%;width:44px;height:44px;
-  cursor:pointer;box-shadow:0 4px 12px rgba(30,142,62,.35);
-  -webkit-tap-highlight-color:transparent;
-}
-.fab-sheet.on{display:flex}
-.fab-sheet .mi{font-size:20px}
-@media(hover:hover){#sum-share-btn{display:none!important}}
-.pcfg-row{
-  display:flex;align-items:center;gap:8px;
-  padding:8px 0;border-bottom:1px solid var(--div);
-}
-.pcfg-row:last-child{border:none}
-.pcfg-code{font-family:'Google Sans';font-size:13px;font-weight:600;width:70px;flex-shrink:0}
-.pcfg-name{font-size:13px;color:var(--gray);flex:1}
-.fab-time{
-  position:fixed;bottom:84px;right:16px;z-index:20;
-  display:none;align-items:center;gap:6px;
-  background:var(--purple);color:#fff;border:none;
-  border-radius:14px;padding:0 18px;height:48px;
-  font-family:'Google Sans';font-size:14px;font-weight:500;
-  cursor:pointer;box-shadow:0 4px 12px rgba(123,31,162,.35);
-}
-.fab-time.on{display:flex}
-.fab-time .mi{font-size:18px}
-.ov{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);display:none;animation:fadeIn .2s}
-.ov.on{display:block}
-.sheet{
-  position:fixed;bottom:0;left:0;right:0;z-index:41;
-  background:var(--surf);border-radius:20px 20px 0 0;
-  max-height:92vh;overflow-y:auto;display:none;
-  padding-bottom:max(env(safe-area-inset-bottom),16px);
-}
-.sheet.on{display:block;animation:slideUp .22s cubic-bezier(.4,0,.2,1)}
-.sh-handle{width:32px;height:4px;background:#dadce0;border-radius:2px;margin:10px auto 0}
-.sh-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px 10px;border-bottom:1px solid var(--div);
-  position:sticky;top:0;background:var(--surf);z-index:1;
-}
-.sh-title{font-family:'Google Sans';font-size:17px;font-weight:500}
-.sh-sub{font-size:12px;color:var(--gray);margin-top:2px}
-.sh-close{
-  width:34px;height:34px;border-radius:50%;border:none;
-  background:none;color:var(--gray);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  -webkit-tap-highlight-color:transparent;
-}
-.sh-close:active{background:var(--gray-lt)}
-.tl-item{display:flex;gap:10px;padding:13px 16px}
-.tl-col{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
-.tl-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-top:1px}
-.tl-dot.done  {background:var(--green)}
-.tl-dot.wip   {background:var(--blue)}
-.tl-dot.hold  {background:var(--red);animation:dotpulse 1s ease infinite}
-.tl-dot.pend  {background:#e8eaed;border:2px solid #bdc1c6}
-.tl-dot.fail  {background:var(--orange)}
-.tl-dot .mi{font-size:13px;color:#fff}
-.tl-dot.pend .mi{color:#9aa0a6}
-.tl-line{width:2px;background:#e0e0e0;flex:1;margin:3px 0}
-.tl-body{flex:1;min-width:0}
-.tl-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-.tl-name{font-family:'Google Sans';font-size:14px;font-weight:500}
-.tl-code{display:inline-block;font-size:10px;color:var(--gray);
-  background:var(--gray-lt);padding:1px 5px;border-radius:3px;font-family:monospace;margin-left:5px;vertical-align:middle}
-.tl-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:3px}
-.tl-meta span{font-size:12px;color:var(--gray);display:flex;align-items:center;gap:3px}
-.tl-meta .mi{font-size:13px}
-.hold-note{margin-top:7px;background:var(--red-lt);border-radius:8px;
-  padding:8px 10px;font-size:12px;color:var(--red);display:flex;gap:5px;align-items:flex-start;line-height:1.4}
-.hold-note .mi{font-size:14px;flex-shrink:0;margin-top:1px}
-.edit-btn{margin-top:6px;font-size:12px;color:var(--blue);border:none;
-  background:none;cursor:pointer;font-family:'Google Sans';font-weight:500;
-  padding:8px 12px 8px 0;-webkit-tap-highlight-color:transparent}
-.qs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
-.qs-opt{
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  padding:14px 10px;border-radius:14px;border:1.5px solid var(--div);
-  cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;
-  min-height:80px;justify-content:center;
-}
-.qs-opt:active{opacity:.8}
-.qs-opt.sel-blue{border-color:var(--blue);background:var(--blue-lt)}
-.qs-opt.sel-green{border-color:var(--green);background:var(--green-lt)}
-.qs-opt.sel-red{border-color:var(--red);background:var(--red-lt)}
-.qs-opt.sel-gray{border-color:#9aa0a6;background:var(--gray-lt)}
-.qs-opt.sel-orange{border-color:var(--orange);background:var(--orange-lt)}
-.qs-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.qs-icon .mi{font-size:20px;color:#fff}
-.qs-lbl{font-family:'Google Sans';font-size:13px;font-weight:500}
-.hold-box{padding:0 16px 14px;display:none}
-.hold-box.on{display:block}
-.hold-box label{font-size:12px;color:var(--gray);display:block;margin-bottom:5px}
-.hold-box textarea{width:100%;border:1.5px solid var(--div);border-radius:10px;
-  padding:10px;font-size:14px;font-family:'Roboto';resize:none;outline:none;transition:border .12s}
-.hold-box textarea:focus{border-color:var(--red)}
-.modal-btns{display:flex;gap:8px;padding:0 16px 16px}
-.btn{flex:1;height:44px;border-radius:22px;font-family:'Google Sans';
-  font-size:14px;font-weight:500;cursor:pointer;border:none;-webkit-tap-highlight-color:transparent}
-.btn-ghost{background:none;color:var(--blue);border:1.5px solid var(--div)}
-.btn-primary{background:var(--blue);color:#fff}
-.bc-date-tabs{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;scrollbar-width:none}
-.bc-date-tabs::-webkit-scrollbar{display:none}
-.bc-tab{flex-shrink:0;padding:5px 14px;border-radius:14px;
-  font-size:12px;font-weight:500;font-family:'Google Sans';
-  cursor:pointer;border:1.5px solid var(--div);color:var(--gray);background:var(--surf)}
-.bc-tab.on{background:var(--purple-lt);color:var(--purple);border-color:var(--purple)}
-.bc-list{padding:0 12px 80px}
-.bc-card{background:var(--surf);border-radius:10px;box-shadow:var(--sh1);margin-bottom:10px;padding:12px 14px}
-.bc-card-head{font-family:'Google Sans';font-size:14px;font-weight:500;margin-bottom:2px}
-.bc-card-qty{font-size:11px;color:var(--gray);margin-bottom:10px}
-.bc-procs{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
-.bc-proc-item{display:flex;flex-direction:column;align-items:center;gap:3px}
-.bc-proc-code{font-size:10px;font-weight:700;color:var(--gray);font-family:'Google Sans';letter-spacing:.3px}
-.bc-proc-time{
-  border:1.5px solid var(--div);border-radius:8px;
-  padding:5px 4px;font-size:13px;font-family:'Roboto';
-  outline:none;width:74px;text-align:center;transition:border .12s;
-}
-.bc-proc-time:focus{border-color:var(--purple)}
-.bc-proc-time.has-val{border-color:var(--purple);background:var(--purple-lt);color:var(--purple)}
-.bc-remark{
-  width:100%;margin-top:10px;border:1.5px solid var(--div);border-radius:8px;
-  padding:6px 10px;font-size:12px;font-family:'Roboto';outline:none;color:var(--ink);
-}
-.bc-remark:focus{border-color:var(--purple)}
-.bc-result{
-  margin-top:8px;font-size:12px;font-weight:600;color:var(--purple);
-  display:flex;align-items:center;gap:3px;min-height:20px;
-}
-.bc-proc-del{
-  background:none;border:none;cursor:pointer;padding:0 2px;
-  color:#dadce0;font-size:14px;line-height:1;font-family:'Material Icons Round';
-  display:block;text-align:center;
-}
-.bc-proc-del:active{color:var(--red)}
-.bc-drag-handle{
-  color:#dadce0;font-size:14px;line-height:1;font-family:'Material Icons Round';
-  display:block;text-align:center;cursor:grab;touch-action:none;
-}
-.bc-drag-handle:active{cursor:grabbing;color:var(--purple)}
-.bc-proc-item.sortable-ghost{opacity:.35;background:var(--purple-lt);border-radius:8px}
-.bc-proc-item.sortable-chosen{box-shadow:var(--sh2);border-radius:8px}
-.bc-add-btn{
-  display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;
-  padding:4px 6px;border-radius:8px;border:1.5px dashed var(--div);
-  color:#9aa0a6;font-size:10px;font-weight:600;font-family:'Google Sans';
-  background:none;align-self:flex-end;margin-bottom:1px;
-}
-.bc-add-btn:active{border-color:var(--purple);color:var(--purple)}
-.bc-picker{
-  display:none;flex-wrap:wrap;gap:5px;margin-top:8px;
-  padding:8px;background:var(--gray-lt);border-radius:8px;
-}
-.bc-picker.on{display:flex}
-.bc-pick-opt{
-  padding:4px 10px;border-radius:10px;font-size:11px;font-weight:600;
-  font-family:'Google Sans';cursor:pointer;border:1.5px solid var(--div);
-  background:var(--surf);color:var(--gray);
-}
-.bc-pick-opt:active{background:var(--purple-lt);color:var(--purple);border-color:var(--purple)}
-.jc-remark{font-size:11px;color:var(--gray);margin-top:4px;display:flex;align-items:center;gap:3px}
-.bc-time{
-  border:1.5px solid var(--div);border-radius:8px;
-  padding:6px 8px;font-size:13px;font-family:'Roboto';
-  outline:none;width:108px;flex-shrink:0;transition:border .12s;
-}
-.bc-time:focus{border-color:var(--purple)}
-.bc-save-btn{
-  position:sticky;bottom:0;display:block;width:100%;margin:0;
-  height:52px;border-radius:0;font-family:'Google Sans';font-size:15px;
-  font-weight:500;cursor:pointer;border:none;background:var(--purple);color:#fff;
-  box-shadow:0 -2px 8px rgba(123,31,162,.2);
-}
-.drop-zone{
-  margin:14px;border:2px dashed #dadce0;border-radius:14px;
-  padding:28px 16px;text-align:center;cursor:pointer;transition:all .15s;
-}
-.drop-zone:active,.drop-zone.on{border-color:var(--blue);background:var(--blue-lt)}
-.drop-mi{font-size:44px;color:#dadce0;transition:color .15s;display:block}
-.drop-zone:active .drop-mi,.drop-zone.on .drop-mi{color:var(--blue)}
-.drop-title{font-family:'Google Sans';font-size:15px;font-weight:500;margin-top:10px}
-.drop-sub{font-size:13px;color:var(--gray);margin-top:4px}
-.prev-info{display:flex;justify-content:space-between;padding:0 14px 8px;align-items:center}
-.prev-wrap{margin:0 14px;border:1px solid var(--div);border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto}
-table{width:100%;border-collapse:collapse;font-size:12px}
-thead th{background:var(--gray-lt);padding:7px 10px;text-align:left;
-  font-size:10px;font-weight:500;color:var(--gray);text-transform:uppercase;
-  letter-spacing:.4px;position:sticky;top:0}
-tbody tr{border-top:1px solid var(--div)}
-tbody tr:active{background:var(--gray-lt)}
-td{padding:7px 10px;color:var(--ink)}
-.new-badge{background:var(--blue-lt);color:var(--blue);font-size:10px;font-weight:500;padding:1px 5px;border-radius:4px}
-.merge-badge{background:var(--amber-lt);color:#b06000;font-size:10px;font-weight:500;padding:1px 5px;border-radius:4px}
-.btn-full{display:block;width:calc(100% - 28px);margin:10px 14px 0;
-  height:48px;border-radius:24px;font-family:'Google Sans';font-size:15px;
-  font-weight:500;cursor:pointer;border:none;background:var(--blue);color:#fff}
-.pin-wrap{padding:20px 24px}
-.pin-title{font-family:'Google Sans';font-size:16px;font-weight:500;margin-bottom:12px}
-.pin-input{
-  width:100%;border:1.5px solid var(--div);border-radius:10px;
-  padding:12px;font-size:18px;font-family:'Roboto';outline:none;
-  letter-spacing:4px;text-align:center;transition:border .12s;
-}
-.pin-input:focus{border-color:var(--blue)}
-.pin-err{color:var(--red);font-size:12px;margin-top:6px;display:none}
-.pin-err.on{display:block}
-.audit-row{display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--div);align-items:flex-start}
-.audit-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.audit-body{flex:1;min-width:0}
-.audit-main{font-size:13px;color:var(--ink)}
-.audit-meta{font-size:11px;color:#9aa0a6;margin-top:2px}
-.empty{text-align:center;padding:64px 32px;display:none}
-.empty.on{display:block}
-.empty .mi{font-size:56px;color:#dadce0;display:block}
-.empty-t{font-family:'Google Sans';font-size:16px;color:var(--gray);margin-top:12px}
-.empty-s{font-size:13px;color:#9aa0a6;margin-top:4px}
-@keyframes fadeIn  {from{opacity:0}to{opacity:1}}
-@keyframes slideUp {from{transform:translateY(50px);opacity:0}to{transform:translateY(0);opacity:1}}
-input[type=file]{display:none}
-.pb80{padding-bottom:120px}
 </style>
 </head>
 <body>
 
-<header class="top-bar">
-  <span class="mi" style="color:var(--blue);font-size:22px">factory</span>
-  <span class="gs top-bar-title" style="margin-left:4px">Production Tracker</span>
-  <div id="sync-badge" class="sync-badge">
-    <span class="mi" style="font-size:13px" id="sync-icon">cloud_done</span>
-    <span id="sync-text">—</span>
-  </div>
-  <button id="hold-pill" class="hold-pill" onclick="filterStatus('hold')">
-    <span class="mi" style="font-size:13px">pause_circle</span>
-    <span id="hold-count">0</span> HOLD
-  </button>
-  <div class="avatar" onclick="toggleAdmin()">
-    <span id="avatar-label">ผู</span>
-    <div class="admin-dot" id="admin-dot"></div>
-  </div>
-</header>
+<!-- Loading bar -->
+<div class="loading-bar" id="loadingBar"></div>
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
-<div class="filter-bar">
-  <div class="filter-scroll" id="date-chips">
-    <div class="chip" data-d="prev"   onclick="setDate('prev')">วันนี้+ค้าง</div>
-    <div class="chip" data-d="today"  onclick="setDate('today')">วันนี้</div>
-    <div class="chip" data-d="7"      onclick="setDate('7')">7 วัน</div>
-    <div class="chip" data-d="month"  onclick="setDate('month')">เดือนนี้</div>
-    <div class="chip" data-d="all"    onclick="setDate('all')">ทั้งหมด</div>
-    <div class="chip" data-d="custom" onclick="setDate('custom')" style="display:flex;align-items:center;gap:4px">
-      <span class="mi" style="font-size:13px">date_range</span><span id="custom-chip-label">ช่วงวันที่</span>
-    </div>
-  </div>
-  <div id="custom-range-row" style="display:none;padding:6px 12px 4px;gap:8px;align-items:center">
-    <input type="date" id="dr-from" class="bc-time" style="width:130px;font-size:13px" oninput="applyCustomRange()">
-    <span style="font-size:13px;color:var(--gray)">—</span>
-    <input type="date" id="dr-to"   class="bc-time" style="width:130px;font-size:13px" oninput="applyCustomRange()">
+<!-- ══ TOP BAR ══ -->
+<div class="topbar">
+  <span class="topbar-title">สถานะงานนัด</span>
+  <span class="sync-badge" onclick="doSync()" id="syncBadge">🔄 ซิงค์</span>
+  <div class="topbar-right">
+    <button class="btn-icon" onclick="openImport()">📥 นำเข้า</button>
+    <button class="btn-icon" id="btnAdmin" onclick="openAdmin()">🔐 แอดมิน</button>
+    <button class="btn-icon" onclick="openAudit()">📋 ประวัติ</button>
+    <a class="btn-icon" href="#" id="sheetLink" target="_blank">📊 Sheet</a>
+    <div class="avatar" id="avatarEl" onclick="openAdmin()">U</div>
   </div>
 </div>
 
-<div class="search-wrap">
-  <div class="search-bar">
-    <span class="mi">search</span>
-    <input id="search-input" type="text" placeholder="ค้นหา product..." oninput="renderList()">
-    <div class="vdiv"></div>
-    <select id="process-filter" class="proc-sel" onchange="renderList()">
-      <option value="">ทุก Process</option>
+<!-- ══ CONTENT ══ -->
+<div class="content">
+
+  <!-- Summary pills -->
+  <div class="summary-bar" id="summaryBar">
+    <div class="sum-pill"><span class="dot dot-done"></span><span id="sDone">ส่งครบ: 0</span></div>
+    <div class="sum-pill"><span class="dot dot-partial"></span><span id="sPartial">แบ่งส่ง: 0</span></div>
+    <div class="sum-pill"><span class="dot dot-fail"></span><span id="sFail">ส่งไม่ได้: 0</span></div>
+    <div class="sum-pill"><span class="dot dot-wip"></span><span id="sWip">กำลังดำเนินการ: 0</span></div>
+    <div class="sum-pill"><span class="dot dot-hold"></span><span id="sHold">HOLD: 0</span></div>
+    <div class="sum-pill"><span class="dot dot-pend"></span><span id="sPend">รอ: 0</span></div>
+  </div>
+
+  <!-- Filter row -->
+  <div class="filter-row">
+    <input class="filter-input" id="searchBox" placeholder="🔍 ค้นหาชื่องาน / ORDER..." oninput="renderTable()" style="flex:1;min-width:180px;"/>
+    <select class="filter-select" id="statusFilter" onchange="renderTable()">
+      <option value="">สถานะทั้งหมด</option>
+      <option value="done">ส่งครบ</option>
+      <option value="wip">กำลังดำเนินการ</option>
+      <option value="hold">HOLD</option>
+      <option value="fail">ส่งไม่ได้</option>
+      <option value="partial">แบ่งส่ง</option>
+      <option value="pend">รอ</option>
     </select>
+    <input type="date" class="filter-input" id="dateFrom" oninput="renderTable()" placeholder="จาก"/>
+    <input type="date" class="filter-input" id="dateTo" oninput="renderTable()" placeholder="ถึง"/>
   </div>
-</div>
 
-<div class="stat-row">
-  <div class="stat-card on" data-f="all"  onclick="filterStatus('all')">
-    <span class="stat-num" id="cnt-all"  style="color:var(--ink)">0</span>
-    <span class="stat-lbl">ทั้งหมด</span>
-    <span class="stat-pct" id="pct-all"></span>
+  <!-- Time period chips -->
+  <div class="chips-row" id="periodChips">
+    <span class="chip" data-p="today" onclick="setPeriod('today')">วันนี้</span>
+    <span class="chip" data-p="yesterday" onclick="setPeriod('yesterday')">เมื่อวาน</span>
+    <span class="chip" data-p="7d" onclick="setPeriod('7d')">7 วัน</span>
+    <span class="chip" data-p="month" onclick="setPeriod('month')">เดือนนี้</span>
+    <span class="chip active" data-p="all" onclick="setPeriod('all')">ทั้งหมด</span>
   </div>
-  <div class="stat-card" data-f="wip"    onclick="filterStatus('wip')">
-    <span class="stat-num" id="cnt-wip"  style="color:var(--blue)">0</span>
-    <span class="stat-lbl">กำลังทำ</span>
-    <span class="stat-pct" id="pct-wip">0%</span>
-  </div>
-  <div class="stat-card" data-f="hold"   onclick="filterStatus('hold')">
-    <span class="stat-num" id="cnt-hold" style="color:var(--red)">0</span>
-    <span class="stat-lbl">HOLD</span>
-    <span class="stat-pct" id="pct-hold">0%</span>
-  </div>
-  <div class="stat-card" data-f="done"   onclick="filterStatus('done')">
-    <span class="stat-num" id="cnt-done" style="color:var(--green)">0</span>
-    <span class="stat-lbl">เสร็จ</span>
-    <span class="stat-pct" id="pct-done">0%</span>
-  </div>
-  <div class="stat-card" data-f="fail"   onclick="filterStatus('fail')">
-    <span class="stat-num" id="cnt-fail" style="color:var(--orange)">0</span>
-    <span class="stat-lbl">ไม่สำเร็จ</span>
-    <span class="stat-pct" id="pct-fail">0%</span>
-  </div>
-  <div class="stat-card" data-f="pend"   onclick="filterStatus('pend')">
-    <span class="stat-num" id="cnt-pend" style="color:var(--gray)">0</span>
-    <span class="stat-lbl">รอ</span>
-    <span class="stat-pct" id="pct-pend">0%</span>
-  </div>
-</div>
-<div class="stat-bar">
-  <div class="stat-bar-seg" id="bar-wip"  style="background:var(--blue)"></div>
-  <div class="stat-bar-seg" id="bar-done" style="background:var(--green)"></div>
-  <div class="stat-bar-seg" id="bar-hold" style="background:var(--red)"></div>
-  <div class="stat-bar-seg" id="bar-fail" style="background:var(--orange)"></div>
-  <div class="stat-bar-seg" id="bar-pend" style="background:#e8eaed;flex:1"></div>
-</div>
 
-<div id="lp-hint" class="lp-hint">กดค้าง card เพื่ออัพเดทสถานะ</div>
-
-<div class="pb80">
-  <div id="job-list"></div>
-  <div id="empty" class="empty">
-    <span class="mi">assignment</span>
-    <div class="empty-t">ยังไม่มีข้อมูลงาน</div>
-    <div class="empty-s">กดปุ่ม + นำเข้า เพื่อโหลดไฟล์ Excel</div>
-  </div>
-</div>
-
-<button class="fab-summary" onclick="showSummary()">
-  <span class="mi">summarize</span> สรุปรายการ
-</button>
-<button class="fab-pcfg" id="fab-pcfg" onclick="showPCfg()">
-  <span class="mi">settings</span>
-</button>
-<button class="fab-sheet" id="fab-sheet" onclick="window.open(SHEET_URL,'_blank')">
-  <span class="mi">table_chart</span>
-</button>
-<button class="fab-time on" id="fab-time" onclick="showBatchCommit()">
-  <span class="mi">schedule</span> ตั้งเวลา
-</button>
-<button class="fab" onclick="showImport()">
-  <span class="mi">upload_file</span> นำเข้า
-</button>
-
-<!-- QUICK STATUS SHEET -->
-<div id="ov-qs" class="ov" onclick="closeQS()"></div>
-<div id="sh-qs" class="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
-    <div>
-      <div class="sh-title" id="qs-title">อัพเดทสถานะ</div>
-      <div class="sh-sub" id="qs-sub">—</div>
-    </div>
-    <button class="sh-close" onclick="closeQS()"><span class="mi" style="font-size:20px">close</span></button>
-  </div>
-  <div id="qs-proc-chips" style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--div)"></div>
-  <div class="qs-grid">
-    <div class="qs-opt" data-v="pend" onclick="pickQS(this)">
-      <div class="qs-icon" style="background:#9aa0a6"><span class="mi">circle</span></div>
-      <span class="qs-lbl" style="color:var(--gray)">รอดำเนินการ</span>
-    </div>
-    <div class="qs-opt" data-v="wip" onclick="pickQS(this)">
-      <div class="qs-icon" style="background:var(--blue)"><span class="mi">autorenew</span></div>
-      <span class="qs-lbl" style="color:var(--blue)">กำลังดำเนินการ</span>
-    </div>
-    <div class="qs-opt" data-v="done" onclick="pickQS(this)">
-      <div class="qs-icon" style="background:var(--green)"><span class="mi">check_circle</span></div>
-      <span class="qs-lbl" style="color:var(--green)">เสร็จสิ้น</span>
-    </div>
-    <div class="qs-opt" data-v="hold" onclick="pickQS(this)">
-      <div class="qs-icon" style="background:var(--red)"><span class="mi">pause_circle</span></div>
-      <span class="qs-lbl" style="color:var(--red)">HOLD</span>
-    </div>
-    <div class="qs-opt" data-v="fail" onclick="pickQS(this)">
-      <div class="qs-icon" style="background:var(--orange)"><span class="mi">cancel</span></div>
-      <span class="qs-lbl" style="color:var(--orange)">ไม่สำเร็จ</span>
-    </div>
-  </div>
-  <div class="hold-box" id="qs-hold-box">
-    <label>สาเหตุที่ HOLD / ไม่สำเร็จ</label>
-    <textarea id="qs-hold-comment" rows="2" placeholder="ระบุสาเหตุ..."></textarea>
-  </div>
-  <div class="modal-btns">
-    <button class="btn btn-ghost" onclick="closeQS()">ยกเลิก</button>
-    <button class="btn btn-primary" onclick="saveQS()">บันทึก</button>
-  </div>
-</div>
-
-<!-- DETAIL SHEET -->
-<div id="ov-detail" class="ov" onclick="closeDetail()"></div>
-<div id="sh-detail" class="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
-    <div>
-      <div class="sh-title" id="d-title">—</div>
-      <div style="display:flex;gap:12px;margin-top:3px">
-        <span style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:3px">
-          <span class="mi" style="font-size:13px">event</span><span id="d-due">—</span>
-        </span>
-        <span style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:3px">
-          <span class="mi" style="font-size:13px">inventory_2</span><span id="d-qty">—</span>
-        </span>
-      </div>
-    </div>
-    <button class="sh-close" onclick="closeDetail()"><span class="mi" style="font-size:20px">close</span></button>
-  </div>
-  <div id="d-timeline" style="padding-top:4px"></div>
-</div>
-
-<!-- PROCESS STATUS SHEET -->
-<div id="ov-ps" class="ov" onclick="closePS()"></div>
-<div id="sh-ps" class="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
-    <div>
-      <div class="sh-title" id="ps-proc">อัพเดทสถานะ</div>
-      <div class="sh-sub" id="ps-job">—</div>
-    </div>
-    <button class="sh-close" onclick="closePS()"><span class="mi" style="font-size:20px">close</span></button>
-  </div>
-  <div class="qs-grid">
-    <div class="qs-opt" data-v="pend" onclick="pickPS(this)">
-      <div class="qs-icon" style="background:#9aa0a6"><span class="mi">circle</span></div>
-      <span class="qs-lbl" style="color:var(--gray)">รอดำเนินการ</span>
-    </div>
-    <div class="qs-opt" data-v="wip" onclick="pickPS(this)">
-      <div class="qs-icon" style="background:var(--blue)"><span class="mi">autorenew</span></div>
-      <span class="qs-lbl" style="color:var(--blue)">กำลังดำเนินการ</span>
-    </div>
-    <div class="qs-opt" data-v="done" onclick="pickPS(this)">
-      <div class="qs-icon" style="background:var(--green)"><span class="mi">check_circle</span></div>
-      <span class="qs-lbl" style="color:var(--green)">เสร็จสิ้น</span>
-    </div>
-    <div class="qs-opt" data-v="hold" onclick="pickPS(this)">
-      <div class="qs-icon" style="background:var(--red)"><span class="mi">pause_circle</span></div>
-      <span class="qs-lbl" style="color:var(--red)">HOLD</span>
-    </div>
-    <div class="qs-opt" data-v="fail" onclick="pickPS(this)">
-      <div class="qs-icon" style="background:var(--orange)"><span class="mi">cancel</span></div>
-      <span class="qs-lbl" style="color:var(--orange)">ไม่สำเร็จ</span>
-    </div>
-  </div>
-  <div class="hold-box" id="ps-hold-box">
-    <label>สาเหตุที่ HOLD / ไม่สำเร็จ</label>
-    <textarea id="ps-hold-comment" rows="2" placeholder="ระบุสาเหตุ..."></textarea>
-  </div>
-  <div class="modal-btns">
-    <button class="btn btn-ghost" onclick="closePS()">ยกเลิก</button>
-    <button class="btn btn-primary" onclick="savePS()">บันทึก</button>
-  </div>
-</div>
-
-<!-- SUMMARY SHEET -->
-<div id="ov-sum" class="ov" onclick="closeSum()"></div>
-<div id="sh-sum" class="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
-    <div>
-      <div class="sh-title">สรุปรายการนัด</div>
-      <div class="sh-sub" id="sum-sub"></div>
-    </div>
-    <button class="sh-close" onclick="closeSum()"><span class="mi" style="font-size:20px">close</span></button>
-  </div>
-  <div style="padding:0 16px 8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none" id="sum-tabs"></div>
-  <div style="position:relative;margin:0 16px 12px">
-    <textarea id="sum-text" readonly style="
-      width:100%;min-height:340px;border:1.5px solid var(--div);border-radius:10px;
-      padding:12px;font-size:13px;font-family:'Roboto';line-height:1.7;
-      resize:none;outline:none;background:var(--gray-lt);color:var(--ink);
-    "></textarea>
-  </div>
-  <div style="padding:0 16px 24px;display:flex;gap:8px">
-    <button onclick="copySum()" id="sum-copy-btn" style="
-      flex:1;height:48px;border-radius:24px;border:none;
-      background:var(--blue);color:#fff;font-family:'Google Sans';
-      font-size:15px;font-weight:500;cursor:pointer;display:flex;
-      align-items:center;justify-content:center;gap:6px;
-    "><span class="mi">content_copy</span>คัดลอก</button>
-    <button onclick="shareSum()" id="sum-share-btn" style="
-      flex:1;height:48px;border-radius:24px;border:none;
-      background:var(--green);color:#fff;font-family:'Google Sans';
-      font-size:15px;font-weight:500;cursor:pointer;display:flex;
-      align-items:center;justify-content:center;gap:6px;
-    "><span class="mi">share</span>แชร์</button>
-  </div>
-</div>
-
-<!-- PROCESS CONFIG SHEET -->
-<div id="ov-pcfg" class="ov" onclick="closePCfg()"></div>
-<div id="sh-pcfg" class="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
-    <div>
-      <div class="sh-title">จัดการ Process</div>
-      <div class="sh-sub">เพิ่ม/ลบ process code ที่ใช้ในโรงงาน</div>
-    </div>
-    <button class="sh-close" onclick="closePCfg()"><span class="mi" style="font-size:20px">close</span></button>
-  </div>
-  <div style="padding:0 16px 16px">
-    <div id="pcfg-list"></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <input id="pcfg-code" placeholder="CODE (เช่น ST2)" maxlength="10"
-        style="flex:0 0 90px;border:1.5px solid var(--div);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;font-family:Roboto;text-transform:uppercase">
-      <input id="pcfg-name" placeholder="ชื่อเต็ม (เช่น Sort Tape)"
-        style="flex:1;border:1.5px solid var(--div);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;font-family:Roboto">
-      <button onclick="addPCfg()" style="
-        background:var(--blue);color:#fff;border:none;border-radius:8px;
-        padding:0 14px;font-family:'Google Sans';font-size:13px;cursor:pointer;flex-shrink:0">
-        เพิ่ม
-      </button>
-    </div>
-    <button onclick="resetPCfg()" style="
-      margin-top:10px;width:100%;padding:10px;border:1.5px solid var(--div);
-      border-radius:8px;font-family:'Google Sans';font-size:13px;cursor:pointer;
-      background:none;color:var(--gray)">
-      รีเซ็ตเป็นค่าเริ่มต้น
-    </button>
-  </div>
-</div>
-
-<!-- BATCH COMMITMENT SHEET -->
-<div id="ov-bc" class="ov" onclick="closeBC()"></div>
-<div id="sh-bc" class="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
-    <div>
-      <div class="sh-title">ตั้งเวลา Commitment</div>
-      <div class="sh-sub">กรอกเวลา commitment ทุก process พร้อมกัน</div>
-    </div>
-    <button class="sh-close" onclick="closeBC()"><span class="mi" style="font-size:20px">close</span></button>
-  </div>
-  <div class="bc-date-tabs" id="bc-tabs"></div>
-  <div class="bc-list" id="bc-list"></div>
-</div>
-
-<!-- IMPORT SHEET -->
-<div id="ov-import" class="ov" onclick="closeImport()"></div>
-<div id="sh-import" class="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
-    <span class="sh-title">นำเข้าไฟล์ Excel</span>
-    <button class="sh-close" onclick="closeImport()"><span class="mi" style="font-size:20px">close</span></button>
-  </div>
-  <div id="drop-zone" class="drop-zone"
-    onclick="document.getElementById('file-input').click()"
-    ondragover="event.preventDefault();this.classList.add('on')"
-    ondragleave="this.classList.remove('on')"
-    ondrop="handleDrop(event)">
-    <span class="mi drop-mi">cloud_upload</span>
-    <div class="drop-title">ลากไฟล์มาวางที่นี่</div>
-    <div class="drop-sub">หรือกดเพื่อเลือกไฟล์ · .xls .xlsx</div>
-    <input type="file" id="file-input" accept=".xls,.xlsx" onchange="handleFile(this.files[0])">
-  </div>
-  <div id="import-prev" style="display:none">
-    <div class="prev-info">
-      <span style="font-family:'Google Sans';font-size:13px;font-weight:500" id="prev-count">0 งาน</span>
-      <span style="font-size:12px;color:var(--gray)" id="prev-dates"></span>
-    </div>
-    <div class="prev-wrap">
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-wrap">
       <table>
-        <thead><tr>
-          <th>#</th><th>Product</th><th style="text-align:right">จำนวน</th>
-          <th>Process</th><th>Due</th><th>สถานะ</th>
-        </tr></thead>
-        <tbody id="prev-body"></tbody>
+        <thead>
+          <tr>
+            <th style="width:42px">#</th>
+            <th>ชื่องาน</th>
+            <th>ORDER</th>
+            <th>กระบวนการ</th>
+            <th>วันที่นัด</th>
+            <th>เวลานัด</th>
+            <th>สถานะ</th>
+            <th>หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
       </table>
     </div>
-    <button class="btn-full" onclick="confirmImport()">
-      นำเข้า <span id="imp-cnt">0</span> งาน
-    </button>
   </div>
-  <div style="height:16px"></div>
+
+</div><!-- /content -->
+
+<!-- FAB add job -->
+<button class="fab" id="fabBtn" onclick="openAddJob()" style="display:none">+</button>
+
+<!-- ══════════════════════ OVERLAYS / SHEETS ══════════════════════ -->
+
+<!-- Job bottom-sheet (view/edit) -->
+<div class="overlay" id="ovJob">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="sheet-title" id="jobSheetTitle" style="margin-bottom:0;flex:1"></span>
+      <button class="sheet-close" onclick="closeSheet('ovJob')">✕</button>
+    </div>
+    <div id="jobSheetBody"></div>
+  </div>
 </div>
 
-<!-- ADMIN PIN SHEET -->
-<div id="ov-pin" class="ov" onclick="closePin()"></div>
-<div id="sh-pin" class="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
-    <span class="sh-title" id="pin-title">เข้าสู่โหมด Admin</span>
-    <button class="sh-close" onclick="closePin()"><span class="mi" style="font-size:20px">close</span></button>
+<!-- Quick-status sheet -->
+<div class="overlay" id="ovQS">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="sheet-title" id="qsTitle" style="margin-bottom:0;flex:1">เปลี่ยนสถานะ</span>
+      <button class="sheet-close" onclick="closeSheet('ovQS')">✕</button>
+    </div>
+    <div id="qsBody"></div>
   </div>
-  <div class="pin-wrap">
-    <div class="pin-title" id="pin-sub">กรอกรหัสผ่าน Admin</div>
-    <input type="password" id="pin-input" class="pin-input" placeholder="••••"
-      maxlength="20" oninput="clearPinErr()" onkeydown="if(event.key==='Enter')confirmPin()">
-    <div class="pin-err" id="pin-err">รหัสผ่านไม่ถูกต้อง</div>
-    <div class="modal-btns" style="margin-top:16px">
-      <button class="btn btn-ghost" onclick="closePin()">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="confirmPin()">ยืนยัน</button>
+</div>
+
+<!-- Batch-commit sheet -->
+<div class="overlay" id="ovBC">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="sheet-title" id="bcTitle" style="margin-bottom:0;flex:1">แก้ไขงาน</span>
+      <button class="sheet-close" onclick="closeSheet('ovBC')">✕</button>
+    </div>
+    <div id="bcBody"></div>
+  </div>
+</div>
+
+<!-- Proc-status sheet (from batch-commit proc badge) -->
+<div class="overlay" id="ovPS">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="sheet-title" id="psTitle" style="margin-bottom:0;flex:1">สถานะกระบวนการ</span>
+      <button class="sheet-close" onclick="closeSheet('ovPS')">✕</button>
+    </div>
+    <div id="psBody"></div>
+  </div>
+</div>
+
+<!-- Add Job sheet -->
+<div class="overlay" id="ovAddJob">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="sheet-title" style="margin-bottom:0;flex:1">เพิ่มงานใหม่</span>
+      <button class="sheet-close" onclick="closeSheet('ovAddJob')">✕</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">ชื่องาน *</label>
+      <input class="form-input" id="ajName" placeholder="ชื่องาน"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">ORDER (ไม่บังคับ)</label>
+      <input class="form-input" id="ajOrder" placeholder="ORDER"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">วันที่นัด</label>
+      <input class="form-input" type="date" id="ajDue"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">เวลานัด</label>
+      <input class="form-input" type="time" id="ajTime"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">หมายเหตุ</label>
+      <textarea class="form-input" id="ajRemark" rows="2"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeSheet('ovAddJob')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="doAddJob()">เพิ่มงาน</button>
     </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<!-- Admin sheet -->
+<div class="overlay" id="ovAdmin">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="sheet-title" id="adminTitle" style="margin-bottom:0;flex:1">แอดมิน</span>
+      <button class="sheet-close" onclick="closeSheet('ovAdmin')">✕</button>
+    </div>
+    <div id="adminBody"></div>
+  </div>
+</div>
+
+<!-- Import sheet -->
+<div class="overlay" id="ovImport">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="sheet-title" style="margin-bottom:0;flex:1">นำเข้าจาก Excel</span>
+      <button class="sheet-close" onclick="closeSheet('ovImport')">✕</button>
+    </div>
+    <div id="importBody">
+      <p style="color:#666;font-size:13px;margin-bottom:12px;">เลือกไฟล์ .xlsx — คอลัมน์: ชื่องาน | กระบวนการ (คั่นด้วย,) | วันที่นัด | เวลา | ORDER | qty | หมายเหตุ</p>
+      <input type="file" id="xlsxFile" accept=".xlsx,.xls" class="form-input"/>
+      <div id="importPreview" style="margin-top:12px;"></div>
+      <div class="btn-row" id="importBtnRow" style="display:none">
+        <button class="btn btn-ghost" onclick="closeSheet('ovImport')">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="doImport()">นำเข้า</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Audit sheet -->
+<div class="overlay" id="ovAudit">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="sheet-title" style="margin-bottom:0;flex:1">ประวัติการเปลี่ยนสถานะ</span>
+      <button class="sheet-close" onclick="closeSheet('ovAudit')">✕</button>
+    </div>
+    <div id="auditBody"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ JAVASCRIPT ══════════════════════ -->
 <script>
-// ══ CONFIG ════════════════════════════════════
-const ADMIN_PASSWORD = 'admin1234';
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWG4W57omvae2bboMmw9RfbSBknNwwqJGhLqqNz7yv_WqlMmYYHJ2G5l4eQr_WIDWt/exec';
+'use strict';
+// ══ CONFIG ══
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbzWG4W57omvae2bboMmw9RfbSBknNwwqJGhLqqNz7yv_WqlMmYYHJ2G5l4eQr_WIDWt/exec';
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Xf5S0dANIHssjvc1-1kmWSjOxMC83KZgEpKThddsKEc/edit?gid=1837720472#gid=1837720472';
-const POLL_INTERVAL = 60000;
+const ADMIN_PASSWORD = 'admin1234';
+const LS_KEY    = 'prodTracker_v3';
+const POLL_MS   = 60000;
 
-// ══ PROCESS MAP ═══════════════════════════════
-const PM_DEFAULT = {
-  PR:'Printing',PR1:'Printing',PR2nd:'Printing',
-  SP:'Sort Print',SP2nd:'Sort Print',
-  LA:'Laminating',DC:'Die Cutting',
-  GL:'Gluer',MGL:'Manual Glue',GL2nd:'Gluer',
-  BT:'Blister',SG:'Sort Glue',IJ:'InkJet',GP:'Glue Pack',
-  IS:'Inspection',CA:'Carton Assy',EM:'Embossing',
-  AS:'Assembly',HS:'Heat Seal',FL:'Folding',OTH:'Other',
-};
-let PM = {};
-function loadPM() {
-  try {
-    const saved = localStorage.getItem('pt_pm');
-    PM = saved ? JSON.parse(saved) : {...PM_DEFAULT};
-  } catch(e) { PM = {...PM_DEFAULT}; }
+// ══ STATE ══
+let jobs     = [];
+let auditLog = [];
+let isAdmin  = false;
+let activeJob = null;        // job being viewed in ovJob / ovBC
+let importRows = [];
+// quick-status state
+let qsJobId = null, qsProcIdx = null, qsPickedStatus = null;
+// proc-status (from BC sheet) state
+let psJobId = null, psProcIdx = null, psPickedStatus = null;
+// period filter
+let activePeriod = 'all';
+
+// ══ INIT ══
+document.getElementById('sheetLink').href = SHEET_URL;
+loadLocal();
+renderTable();
+fetchFromGAS();
+setInterval(fetchFromGAS, POLL_MS);
+updateAdminUI();
+
+// ══ LOCAL STORAGE ══
+function saveLocal(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({jobs, auditLog})); }catch(e){}
 }
-function savePM() { localStorage.setItem('pt_pm', JSON.stringify(PM)); }
-function baseCode(c){ return c.replace(/\d+(st|nd|rd|th)$/i,'').replace(/\d+$/,'') || c; }
-
-// ══ STATE ═════════════════════════════════════
-let jobs=[], auditLog=[], pendingImport=[];
-let activeFilter='all', activeDateFilter='prev';
-let customFrom='', customTo='';
-let activeJob=null, isAdmin=false;
-let qsJobId=null, qsPickedStatus=null, qsProcIdx=null;
-let psJobId=null, psProcIdx=null, psPickedStatus=null;
-let pollTimer=null;
-let bcCurrentDue='';
-
-// ══ AUDIT LOG ════════════════════════════════
-function addAudit(jobId, procCode, fromSt, toSt, note='') {
-  const job=jobs.find(j=>j.id===jobId);
-  auditLog.unshift({
-    ts: new Date().toISOString(),
-    jobId, product: job?.product||'', procCode,
-    from: fromSt, to: toSt, note,
-    by: isAdmin ? 'Admin' : 'User',
-  });
-  saveLocal();
+function loadLocal(){
+  try{
+    const d = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+    if(d.jobs) jobs = d.jobs;
+    if(d.auditLog) auditLog = d.auditLog;
+  }catch(e){}
 }
 
-// ══ LOCAL STORAGE ════════════════════════════
-function saveLocal() {
-  try {
-    localStorage.setItem('pt_jobs', JSON.stringify(jobs));
-    localStorage.setItem('pt_audit', JSON.stringify(auditLog.slice(0,500)));
-    localStorage.setItem('pt_saved', new Date().toISOString());
-  } catch(e){}
-}
-function loadLocal() {
-  try {
-    const j=localStorage.getItem('pt_jobs');
-    const a=localStorage.getItem('pt_audit');
-    if(j) { jobs=JSON.parse(j); renderAll(); setSyncBadge('cache'); }
-    if(a) auditLog=JSON.parse(a);
-  } catch(e){}
-}
-
-// ══ SYNC BADGE ═══════════════════════════════
-function setSyncBadge(state, timeStr='') {
-  const badge=document.getElementById('sync-badge');
-  const icon=document.getElementById('sync-icon');
-  const text=document.getElementById('sync-text');
-  if(state==='syncing'){
-    badge.className='sync-badge syncing';
-    icon.textContent='sync'; text.textContent='กำลังซิงค์...';
-  } else if(state==='ok'){
-    badge.className='sync-badge';
-    icon.textContent='cloud_done'; text.textContent=timeStr||fmtTime(new Date());
-  } else if(state==='offline'){
-    badge.className='sync-badge offline';
-    const saved=localStorage.getItem('pt_saved');
-    icon.textContent='cloud_off';
-    text.textContent=saved?`cache ${fmtTime(new Date(saved))}`:'ไม่มีสัญญาณ';
-  } else if(state==='cache'){
-    badge.className='sync-badge';
-    const saved=localStorage.getItem('pt_saved');
-    icon.textContent='history'; text.textContent=saved?fmtTime(new Date(saved)):'cache';
-  }
-}
-
-// ══ GAS FETCH ════════════════════════════════
-async function fetchFromGAS() {
-  if(!GAS_URL) { setSyncBadge('ok'); return; }
-  setSyncBadge('syncing');
-  try {
-    const res=await fetch(GAS_URL+'?action=getJobs');
-    const data=await res.json();
-    if(data.jobs) {
-      jobs=data.jobs.map(j=>({...j, due:String(j.due||'').slice(0,10)}));
-      renderAll(); saveLocal(); setSyncBadge('ok');
-    }
-  } catch(e) { console.error('GAS fetch error:', e); setSyncBadge('offline'); }
-}
-async function gasPost(payload) {
+// ══ NETWORK ══
+async function gasPost(payload){
   if(!GAS_URL) return;
-  try {
-    await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+  try{
+    await fetch(GAS_URL,{
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=UTF-8'},
       body: JSON.stringify(payload),
     });
-  } catch(e){ console.error('GAS POST failed:', e); }
-}
-async function pushStatusToGAS(jobId, procIdx, status, comment) {
-  await gasPost({action:'updateStatus', jobId, procIdx, status, comment, by: isAdmin?'Admin':'User'});
-}
-async function pushImportToGAS(jobsList) {
-  await gasPost({action:'importJobs', jobs: jobsList});
-}
-async function pushCommitmentToGAS(updates) {
-  await gasPost({action:'updateCommitment', updates});
-}
-function startPolling() {
-  if(pollTimer) clearInterval(pollTimer);
-  pollTimer=setInterval(fetchFromGAS, POLL_INTERVAL);
+  }catch(e){ console.error('GAS POST failed:',e); }
 }
 
-// ══ COMPUTED ═════════════════════════════════
-function jobSt(j) {
-  const s=j.processes.map(p=>p.status);
-  if(s.some(x=>x==='hold')) return 'hold';
-  if(s.some(x=>x==='fail')) return 'fail';
-  if(s.every(x=>x==='done'||x==='fail')) return 'done';
-  if(s.some(x=>x==='wip'))  return 'wip';
+function showLoading(v){ document.getElementById('loadingBar').classList.toggle('show',v); }
+
+async function fetchFromGAS(){
+  if(!GAS_URL) return;
+  showLoading(true);
+  try{
+    const r = await fetch(GAS_URL+'?action=getJobs&t='+Date.now());
+    const d = await r.json();
+    if(d.jobs){ jobs = d.jobs; saveLocal(); renderAll(); }
+    if(d.auditLog){ auditLog = d.auditLog; saveLocal(); }
+    document.getElementById('syncBadge').textContent = '✅ ซิงค์แล้ว';
+    setTimeout(()=>{ document.getElementById('syncBadge').textContent = '🔄 ซิงค์'; },2000);
+  }catch(e){ showToast('ไม่สามารถเชื่อมต่อได้'); }
+  finally{ showLoading(false); }
+}
+
+function doSync(){ fetchFromGAS(); }
+
+// ══ TOAST ══
+function showToast(msg, ms=2200){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), ms);
+}
+
+// ══ OVERLAY HELPERS ══
+function openSheet(id){
+  const ov = document.getElementById(id);
+  ov.classList.add('open');
+  requestAnimationFrame(()=>{ ov.querySelector('.sheet').style.transform='translateY(0)'; });
+}
+function closeSheet(id){
+  const ov = document.getElementById(id);
+  ov.classList.remove('open');
+}
+// close on backdrop click
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target===ov) closeSheet(ov.id); });
+});
+
+// ══ STATUS HELPERS ══
+const STATUS_TH  = {done:'ส่งครบ', wip:'กำลังดำเนินการ', hold:'HOLD', fail:'ส่งไม่ได้', partial:'แบ่งส่ง', pend:'รอ'};
+const STATUS_CLS = {done:'done', wip:'wip', hold:'hold', fail:'fail', partial:'partial', pend:'pend'};
+
+function statusBadge(s){
+  const c = STATUS_CLS[s]||'pend';
+  return `<span class="status-badge sb-${c}"><span class="sb-dot sbd-${c}"></span>${STATUS_TH[s]||s}</span>`;
+}
+function procBadgeCls(s){ return `pb-${STATUS_CLS[s]||'pend'}`; }
+
+function jobOverallStatus(job){
+  if(!job.processes||!job.processes.length) return 'pend';
+  const ss = job.processes.map(p=>p.status||'pend');
+  if(ss.every(s=>s==='done')) return 'done';
+  if(ss.some(s=>s==='hold')) return 'hold';
+  if(ss.some(s=>s==='fail')) return 'fail';
+  if(ss.some(s=>s==='partial')) return 'partial';
+  if(ss.some(s=>s==='wip')) return 'wip';
   return 'pend';
 }
-function dateRange() {
-  const today=new Date(); today.setHours(0,0,0,0);
-  const iso=d=>localISO(d);
-  if(activeDateFilter==='prev') return {from:'2000-01-01', to:iso(today)};
-  if(activeDateFilter==='today') return {from:iso(today),to:iso(today)};
-  if(activeDateFilter==='7'){
-    const f=new Date(today); f.setDate(f.getDate()-1);
-    const t=new Date(today); t.setDate(t.getDate()+6);
-    return {from:iso(f),to:iso(t)};
-  }
-  if(activeDateFilter==='month'){
-    const f=new Date(today.getFullYear(),today.getMonth(),1);
-    const t=new Date(today.getFullYear(),today.getMonth()+1,0);
-    return {from:iso(f),to:iso(t)};
-  }
-  if(activeDateFilter==='custom'){
-    if(!customFrom && !customTo) return null;
-    return {from:customFrom||'0000-01-01', to:customTo||'9999-12-31'};
-  }
-  return null;
-}
 
-// ══ AUTO-COMPLETE PREVIOUS PROCESSES ═════════
-function autoCompletePrev(job, upToIdx) {
-  for (let i = 0; i < upToIdx; i++) {
-    const p = job.processes[i];
-    if (p.status !== 'done') {
-      const prev = p.status;
-      p.status = 'done';
-      p.comment = '';
-      addAudit(job.id, p.code, prev, 'done', 'auto-complete');
-      pushStatusToGAS(job.id, i, 'done', '');
-    }
-  }
-}
-
-// ══ RENDER ════════════════════════════════════
-function renderAll() { updateSummary(); renderList(); buildProcFilter(); updateAdminUI(); }
-
-function updateSummary() {
-  const c={all:jobs.length,wip:0,hold:0,done:0,fail:0,pend:0};
-  jobs.forEach(j=>c[jobSt(j)]++);
-  const pct=k=>c.all?Math.round(c[k]/c.all*100)+'%':'0%';
-  document.getElementById('cnt-all').textContent=c.all;
-  document.getElementById('cnt-wip').textContent=c.wip;
-  document.getElementById('cnt-hold').textContent=c.hold;
-  document.getElementById('cnt-done').textContent=c.done;
-  document.getElementById('cnt-fail').textContent=c.fail;
-  document.getElementById('cnt-pend').textContent=c.pend;
-  document.getElementById('pct-wip').textContent=pct('wip');
-  document.getElementById('pct-hold').textContent=pct('hold');
-  document.getElementById('pct-done').textContent=pct('done');
-  document.getElementById('pct-fail').textContent=pct('fail');
-  document.getElementById('pct-pend').textContent=pct('pend');
-  document.getElementById('bar-wip').style.flex=c.wip;
-  document.getElementById('bar-done').style.flex=c.done;
-  document.getElementById('bar-hold').style.flex=c.hold;
-  document.getElementById('bar-fail').style.flex=c.fail;
-  document.getElementById('bar-pend').style.flex=c.pend||0.01;
-  const pill=document.getElementById('hold-pill');
-  document.getElementById('hold-count').textContent=c.hold;
-  pill.classList.toggle('on',c.hold>0);
-}
-
-function buildProcFilter() {
-  const sel=document.getElementById('process-filter');
-  const cur=sel.value;
-  const bases=new Set();
-  jobs.forEach(j=>j.processes.forEach(p=>bases.add(baseCode(p.code))));
-  sel.innerHTML='<option value="">ทุก Process</option>';
-  [...bases].sort().forEach(b=>{
-    const o=document.createElement('option');
-    o.value=b; o.textContent=b; if(b===cur) o.selected=true;
-    sel.appendChild(o);
+// ══ PERIOD FILTER ══
+function setPeriod(p){
+  activePeriod = p;
+  document.querySelectorAll('#periodChips .chip').forEach(c=>{
+    c.classList.toggle('active', c.dataset.p===p);
   });
+  // clear date inputs on period select
+  document.getElementById('dateFrom').value='';
+  document.getElementById('dateTo').value='';
+  renderTable();
 }
 
-function setDate(d) {
-  activeDateFilter=d;
-  document.querySelectorAll('[data-d]').forEach(el=>el.classList.toggle('on',el.dataset.d===d));
-  const row=document.getElementById('custom-range-row');
-  row.style.display=d==='custom'?'flex':'none';
-  renderList();
-}
-function applyCustomRange(){
-  customFrom=document.getElementById('dr-from').value;
-  customTo=document.getElementById('dr-to').value;
-  const lbl=document.getElementById('custom-chip-label');
-  if(customFrom||customTo){
-    const f=customFrom?customFrom.slice(5).replace('-','/'):' ';
-    const t=customTo?customTo.slice(5).replace('-','/'):'  ';
-    lbl.textContent=`${f} – ${t}`;
-  } else {
-    lbl.textContent='ช่วงวันที่';
+function dateRange(){
+  const from = document.getElementById('dateFrom').value;
+  const to   = document.getElementById('dateTo').value;
+  if(from||to) return {from, to};
+  const today = new Date();
+  const fmt = d => d.toISOString().slice(0,10);
+  if(activePeriod==='today') return {from:fmt(today), to:fmt(today)};
+  if(activePeriod==='yesterday'){
+    const y=new Date(today); y.setDate(y.getDate()-1); return {from:fmt(y),to:fmt(y)};
   }
-  renderList();
-}
-function filterStatus(s) {
-  activeFilter=s;
-  document.querySelectorAll('[data-f]').forEach(el=>el.classList.toggle('on',el.dataset.f===s));
-  renderList();
+  if(activePeriod==='7d'){
+    const s=new Date(today); s.setDate(s.getDate()-6); return {from:fmt(s),to:fmt(today)};
+  }
+  if(activePeriod==='month'){
+    const s=new Date(today.getFullYear(),today.getMonth(),1); return {from:fmt(s),to:fmt(today)};
+  }
+  return {from:'', to:''};
 }
 
-function renderList() {
-  const q=document.getElementById('search-input').value.toLowerCase();
-  const proc=document.getElementById('process-filter').value;
-  const range=dateRange();
+function inRange(due, from, to){
+  if(!from&&!to) return true;
+  const d = due||'';
+  if(from&&d<from) return false;
+  if(to&&d>to) return false;
+  return true;
+}
 
-  const filtered=jobs.filter(j=>{
-    if(activeFilter!=='all' && jobSt(j)!==activeFilter) return false;
-    if(q && !j.product.toLowerCase().includes(q)) return false;
-    if(proc && !j.processes.some(p=>baseCode(p.code)===proc)) return false;
-    if(range && (j.due<range.from || j.due>range.to)) return false;
+// ══ SUMMARY ══
+function renderSummary(list){
+  const cnt = {done:0,partial:0,fail:0,wip:0,hold:0,pend:0};
+  list.forEach(j=>{ const s=jobOverallStatus(j); if(cnt[s]!==undefined) cnt[s]++; else cnt.pend++; });
+  document.getElementById('sDone').textContent   = `ส่งครบ: ${cnt.done}`;
+  document.getElementById('sPartial').textContent= `แบ่งส่ง: ${cnt.partial}`;
+  document.getElementById('sFail').textContent   = `ส่งไม่ได้: ${cnt.fail}`;
+  document.getElementById('sWip').textContent    = `กำลังดำเนินการ: ${cnt.wip}`;
+  document.getElementById('sHold').textContent   = `HOLD: ${cnt.hold}`;
+  document.getElementById('sPend').textContent   = `รอ: ${cnt.pend}`;
+}
+
+// ══ RENDER TABLE ══
+function renderAll(){ renderTable(); }
+
+function renderTable(){
+  const search = (document.getElementById('searchBox').value||'').toLowerCase();
+  const stFilter = document.getElementById('statusFilter').value;
+  const {from, to} = dateRange();
+
+  let list = jobs.filter(j=>{
+    if(stFilter && jobOverallStatus(j)!==stFilter) return false;
+    if(!inRange(j.due, from, to)) return false;
+    if(search){
+      const hay = `${j.name||''} ${j.order||''}`.toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
     return true;
   });
 
-  const list=document.getElementById('job-list');
-  const empty=document.getElementById('empty');
-  const hint=document.getElementById('lp-hint');
-  if(jobs.length===0){ list.innerHTML=''; empty.classList.add('on'); hint.classList.remove('show'); return; }
-  empty.classList.remove('on');
-  hint.classList.toggle('show', filtered.length>0);
+  renderSummary(list);
 
-  const groups={};
-  filtered.forEach(j=>{(groups[j.due]=groups[j.due]||[]).push(j)});
-  const today=localISO();
-
-  const sortedDates=Object.keys(groups).sort();
-  let html='', shownOver=false, shownToday=false, shownFuture=false;
-  sortedDates.forEach(due=>{
-    const diff=Math.round((new Date(due+' 00:00:00')-new Date(today+' 00:00:00'))/86400000);
-    if(diff<0 && !shownOver){
-      html+=`<div class="section-hdr overdue"><span class="mi">warning_amber</span>ค้างส่ง</div>`;
-      shownOver=true;
-    } else if(diff===0 && !shownToday){
-      html+=`<div class="section-hdr today"><span class="mi">today</span>วันนี้</div>`;
-      shownToday=true;
-    } else if(diff>0 && !shownFuture){
-      html+=`<div class="section-hdr future"><span class="mi">event</span>กำหนดส่ง</div>`;
-      shownFuture=true;
-    }
-    const urg=diff<0?`<span class="badge-over">เลย ${Math.abs(diff)} วัน</span>`
-              :diff===0?`<span class="badge-today">วันนี้</span>`:'';
-    html+=`<div class="date-group">
-        <span class="date-txt">${fmtDate(due)}</span>${urg}
-        <span class="date-count">${groups[due].length} งาน</span>
-      </div>${groups[due].map(j=>renderCard(j,diff)).join('')}`;
+  // group by due date
+  const groups = {};
+  list.forEach(j=>{
+    const k = j.due||'(ไม่ระบุวัน)';
+    if(!groups[k]) groups[k]=[];
+    groups[k].push(j);
   });
-  list.innerHTML=html;
 
-  if(filtered.length===0 && jobs.length>0)
-    list.innerHTML='<div style="text-align:center;padding:40px 16px;color:#9aa0a6;font-size:14px">ไม่พบงานที่ตรงกับเงื่อนไข</div>';
+  const sortedKeys = Object.keys(groups).sort((a,b)=>a>b?1:a<b?-1:0);
 
-  list.querySelectorAll('.job-card').forEach(card=>{
-    const id=card.dataset.id;
-    let timer, startY;
-    card.addEventListener('touchstart', e=>{
-      startY=e.touches[0].clientY;
-      card.classList.add('pressing');
-      timer=setTimeout(()=>{ card.classList.remove('pressing'); openQS(id); },600);
-    },{passive:true});
-    const cancel=()=>{ clearTimeout(timer); card.classList.remove('pressing'); };
-    card.addEventListener('touchend',cancel);
-    card.addEventListener('touchmove',e=>{
-      if(Math.abs(e.touches[0].clientY-startY)>10) cancel();
-    },{passive:true});
-    card.addEventListener('contextmenu',e=>{ e.preventDefault(); openQS(id); });
-  });
-}
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML='';
 
-function renderCard(j, diff=0) {
-  const st=jobSt(j);
-  const doneN=j.processes.filter(p=>p.status==='done').length;
-  const pct=Math.round((doneN/j.processes.length)*100);
-
-  const badge={
-    done:`<div class="sb done"><span class="mi" style="font-size:12px">check_circle</span>เสร็จ</div>`,
-    wip: `<div class="sb wip"><span class="spin mi" style="font-size:12px">autorenew</span>กำลังทำ</div>`,
-    hold:`<div class="sb hold"><span class="pulse"></span>HOLD</div>`,
-    fail:`<div class="sb fail"><span class="mi" style="font-size:12px">cancel</span>ไม่สำเร็จ</div>`,
-    pend:`<div class="sb pend">รอ</div>`,
-  }[st]||`<div class="sb pend">รอ</div>`;
-
-  const nodes=j.processes.map((p,i)=>{
-    const isLast=i===j.processes.length-1;
-    const line=isLast?'':
-      `<div class="edge ${p.status==='done'?'done':'pend'}"></div>`;
-    return `<div class="node">
-        <div class="dot ${p.status}"></div>
-        <span class="node-lbl ${p.status}">${baseCode(p.code)}</span>
-      </div>${line}`;
-  }).join('');
-
-  const dueChip = st!=='done' && diff<0
-    ? `<span class="jc-due-chip over"><span class="mi" style="font-size:10px">flag</span>เลย ${Math.abs(diff)} วัน</span>`
-    : st!=='done' && diff===0
-    ? `<span class="jc-due-chip today"><span class="mi" style="font-size:10px">flag</span>ครบวันนี้</span>`
-    : '';
-
-  const holdProc = st==='hold' ? j.processes.find(p=>p.status==='hold'&&p.comment) : null;
-  const holdNote = holdProc
-    ? `<div class="jc-hold-note"><span class="mi" style="font-size:13px">warning</span>${holdProc.comment}</div>`
-    : '';
-
-  const urgCls = st!=='done' && diff<0 ? ' due-over' : st!=='done' && diff===0 ? ' due-today' : '';
-
-  return `
-    <div class="job-card s-${st}${urgCls}" data-id="${j.id}" onclick="openDetail('${j.id}')">
-      <div class="jc-inner">
-        <div class="jc-top">
-          <div>
-            <div class="jc-name"><span style="color:#9aa0a6;font-size:12px;font-weight:400;margin-right:4px">#${j.seq}</span>${j.product}</div>
-            <div class="jc-qty">${j.qty.toLocaleString()} ชิ้น</div>
-            ${dueChip}
-          </div>
-          <div class="jc-right">
-            ${badge}
-            ${isAdmin?`<button onclick="event.stopPropagation();confirmDeleteJob('${j.id}')" style="
-              background:none;border:none;cursor:pointer;padding:4px;border-radius:50%;
-              color:#dadce0;display:flex;align-items:center;-webkit-tap-highlight-color:transparent;
-            "><span class="mi" style="font-size:18px">delete_outline</span></button>`:''}
-            <span class="mi" style="color:#dadce0;font-size:16px">chevron_right</span>
-          </div>
-        </div>
-        <div class="nodes">${nodes}</div>
-        ${holdNote}
-        ${(()=>{
-          const wp=j.processes.filter(p=>p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment));
-          if(!wp.length) return '';
-          const maxT=wp.reduce((m,p)=>p.commitment>m?p.commitment:m,'');
-          const codes=wp.map(p=>baseCode(p.code)).join('+');
-          return `<div class="jc-time"><span class="mi" style="font-size:13px;vertical-align:middle;margin-right:3px">schedule</span>${codes} ${maxT}</div>`;
-        })()}
-        ${j.remark?`<div class="jc-remark"><span class="mi" style="font-size:12px">notes</span>${j.remark}</div>`:''}
-        <div class="prog"><div class="prog-fill ${st}" style="width:${pct}%"></div></div>
-      </div>
-    </div>`;
-}
-
-// ══ QUICK STATUS ═════════════════════════════
-function openQS(jobId) {
-  const j=jobs.find(x=>x.id===jobId);
-  if(!j) return;
-  qsJobId=jobId; qsPickedStatus=null;
-  document.getElementById('qs-title').textContent=j.product;
-
-  const defIdx=j.processes.findIndex(p=>p.status!=='done');
-  qsProcIdx=defIdx>=0?defIdx:j.processes.length-1;
-
-  const stColor={done:'var(--green)',wip:'var(--blue)',hold:'var(--red)',fail:'var(--orange)',pend:'#9aa0a6'};
-  const stBg   ={done:'var(--green-lt)',wip:'var(--blue-lt)',hold:'var(--red-lt)',fail:'var(--orange-lt)',pend:'var(--gray-lt)'};
-  document.getElementById('qs-proc-chips').innerHTML=j.processes.map((p,i)=>`
-    <div onclick="selectQSProc(${i})" id="qs-chip-${i}" style="
-      flex-shrink:0;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:500;
-      font-family:'Google Sans';cursor:pointer;border:1.5px solid;white-space:nowrap;
-      border-color:${i===qsProcIdx?stColor[p.status]:'var(--div)'};
-      background:${i===qsProcIdx?stBg[p.status]:'var(--surf)'};
-      color:${i===qsProcIdx?stColor[p.status]:'var(--gray)'};
-    ">${baseCode(p.code)}</div>
-  `).join('');
-
-  document.getElementById('qs-sub').textContent=`Process: ${j.processes[qsProcIdx].name}`;
-  document.querySelectorAll('.qs-grid .qs-opt').forEach(el=>el.className='qs-opt');
-  document.getElementById('qs-hold-box').classList.remove('on');
-  document.getElementById('qs-hold-comment').value='';
-  openSheet('qs');
-}
-function selectQSProc(i){
-  const j=jobs.find(x=>x.id===qsJobId); if(!j) return;
-  qsProcIdx=i;
-  const stColor={done:'var(--green)',wip:'var(--blue)',hold:'var(--red)',fail:'var(--orange)',pend:'#9aa0a6'};
-  const stBg   ={done:'var(--green-lt)',wip:'var(--blue-lt)',hold:'var(--red-lt)',fail:'var(--orange-lt)',pend:'var(--gray-lt)'};
-  j.processes.forEach((_,idx)=>{
-    const p=j.processes[idx];
-    const chip=document.getElementById(`qs-chip-${idx}`);
-    if(!chip) return;
-    chip.style.borderColor=idx===i?stColor[p.status]:'var(--div)';
-    chip.style.background =idx===i?stBg[p.status]:'var(--surf)';
-    chip.style.color      =idx===i?stColor[p.status]:'var(--gray)';
-  });
-  document.getElementById('qs-sub').textContent=`Process: ${j.processes[i].name}`;
-  const proc=j.processes[i];
-  document.getElementById('qs-hold-comment').value=proc.comment||'';
-  if(qsPickedStatus==='hold' || proc.status==='hold'){
-    document.getElementById('qs-hold-box').classList.add('on');
-  }
-}
-function pickQS(el) {
-  qsPickedStatus=el.dataset.v;
-  document.querySelectorAll('.qs-grid .qs-opt').forEach(e=>e.className='qs-opt');
-  const map={pend:'sel-gray',wip:'sel-blue',done:'sel-green',hold:'sel-red',fail:'sel-orange'};
-  el.classList.add(map[qsPickedStatus]);
-  document.getElementById('qs-hold-box').classList.toggle('on',qsPickedStatus==='hold'||qsPickedStatus==='fail');
-}
-function saveQS() {
-  if(!qsJobId||!qsPickedStatus||qsProcIdx===null) return;
-  const j=jobs.find(x=>x.id===qsJobId);
-  const proc=j.processes[qsProcIdx];
-  const from=proc.status;
-  proc.status=qsPickedStatus;
-  const needComment=qsPickedStatus==='hold'||qsPickedStatus==='fail';
-  proc.comment=needComment?document.getElementById('qs-hold-comment').value:'';
-  if(qsPickedStatus!=='pend') autoCompletePrev(j, qsProcIdx);
-  addAudit(qsJobId, proc.code, from, qsPickedStatus, proc.comment);
-  pushStatusToGAS(qsJobId, qsProcIdx, qsPickedStatus, proc.comment);
-  closeQS(); renderAll();
-}
-function closeQS(){ closeSheet('qs'); qsJobId=null; }
-
-// ══ DETAIL ═══════════════════════════════════
-function openDetail(id) {
-  activeJob=jobs.find(j=>j.id===id);
-  if(!activeJob) return;
-  document.getElementById('d-title').textContent=activeJob.product;
-  document.getElementById('d-due').textContent=fmtDate(activeJob.due);
-  document.getElementById('d-qty').textContent=activeJob.qty.toLocaleString()+' ชิ้น';
-  renderTimeline();
-  openSheet('detail');
-}
-function closeDetail(){ closeSheet('detail'); activeJob=null; }
-
-function renderTimeline() {
-  const icons={done:'check',wip:'autorenew',hold:'pause',fail:'cancel',pend:'circle'};
-  document.getElementById('d-timeline').innerHTML=activeJob.processes.map((p,i)=>{
-    const isLast=i===activeJob.processes.length-1;
-    const badge={
-      done:`<div class="sb done" style="font-size:11px"><span class="mi" style="font-size:12px">check_circle</span>เสร็จ</div>`,
-      wip: `<div class="sb wip"  style="font-size:11px"><span class="spin mi" style="font-size:12px">autorenew</span>กำลังทำ</div>`,
-      hold:`<div class="sb hold" style="font-size:11px"><span class="pulse"></span>HOLD</div>`,
-      fail:`<div class="sb fail" style="font-size:11px"><span class="mi" style="font-size:12px">cancel</span>ไม่สำเร็จ</div>`,
-      pend:`<div class="sb pend" style="font-size:11px">รอ</div>`,
-    }[p.status]||`<div class="sb pend" style="font-size:11px">รอ</div>`;
-    return `
-      <div class="tl-item">
-        <div class="tl-col">
-          <div class="tl-dot ${p.status}">
-            <span class="mi" style="font-size:13px;color:${p.status==='pend'?'#9aa0a6':'#fff'}">${icons[p.status]||'circle'}</span>
-          </div>
-          ${!isLast?'<div class="tl-line"></div>':''}
-        </div>
-        <div class="tl-body">
-          <div class="tl-row">
-            <div><span class="tl-name">${p.name}</span><span class="tl-code">${p.code}</span></div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-              ${badge}
-              <button class="edit-btn" onclick="openPS('${activeJob.id}',${i})">แก้ไข</button>
-            </div>
-          </div>
-          <div class="tl-meta">
-            ${p.responsible?`<span><span class="mi">person</span>${p.responsible}</span>`:''}
-            ${p.commitment ?`<span><span class="mi">schedule</span>${p.commitment}</span>`:''}
-          </div>
-          ${p.comment?`<div class="hold-note"><span class="mi">info</span>${p.comment}</div>`:''}
-        </div>
-      </div>`;
-  }).join('');
-}
-
-// ══ PROCESS STATUS ════════════════════════════
-function openPS(jobId, procIdx) {
-  const job=jobs.find(j=>j.id===jobId);
-  const proc=job.processes[procIdx];
-  psJobId=jobId; psProcIdx=procIdx; psPickedStatus=proc.status;
-  document.getElementById('ps-proc').textContent=proc.name;
-  document.getElementById('ps-job').textContent=job.product;
-  document.getElementById('ps-hold-comment').value=proc.comment||'';
-  document.querySelectorAll('#sh-ps .qs-opt').forEach(el=>{
-    el.className='qs-opt';
-    if(el.dataset.v===proc.status){
-      const map={pend:'sel-gray',wip:'sel-blue',done:'sel-green',hold:'sel-red',fail:'sel-orange'};
-      el.classList.add(map[proc.status]||'');
-    }
-  });
-  document.getElementById('ps-hold-box').classList.toggle('on',proc.status==='hold'||proc.status==='fail');
-  openSheet('ps');
-}
-function pickPS(el){
-  psPickedStatus=el.dataset.v;
-  document.querySelectorAll('#sh-ps .qs-opt').forEach(e=>e.className='qs-opt');
-  const map={pend:'sel-gray',wip:'sel-blue',done:'sel-green',hold:'sel-red',fail:'sel-orange'};
-  el.classList.add(map[psPickedStatus]);
-  document.getElementById('ps-hold-box').classList.toggle('on',psPickedStatus==='hold'||psPickedStatus==='fail');
-}
-function savePS(){
-  if(!psJobId||psPickedStatus===null) return;
-  const j=jobs.find(x=>x.id===psJobId);
-  const proc=j.processes[psProcIdx];
-  const from=proc.status;
-  proc.status=psPickedStatus;
-  const needComment=psPickedStatus==='hold'||psPickedStatus==='fail';
-  proc.comment=needComment?document.getElementById('ps-hold-comment').value:'';
-  if(psPickedStatus!=='pend') autoCompletePrev(j, psProcIdx);
-  addAudit(psJobId,proc.code,from,psPickedStatus,proc.comment);
-  pushStatusToGAS(psJobId,psProcIdx,psPickedStatus,proc.comment);
-  closePS(); renderAll();
-  if(activeJob) renderTimeline();
-}
-function closePS(){ closeSheet('ps'); }
-
-// ══ BATCH COMMITMENT ══════════════════════════
-function showBatchCommit() {
-  const dues=[...new Set(jobs.map(j=>j.due))].sort();
-  const today=localISO();
-  const tabs=document.getElementById('bc-tabs');
-  tabs.innerHTML=dues.map(d=>`
-    <div class="bc-tab${d===today?' on':''}" data-due="${d}" onclick="selectBCDate('${d}')">${fmtDate(d)}</div>
-  `).join('');
-  const active=dues.find(d=>d===today)||dues[0]||'';
-  bcCurrentDue=active;
-  if(active) renderBCList(active);
-  openSheet('bc');
-}
-function selectBCDate(due){
-  bcCurrentDue=due;
-  document.querySelectorAll('.bc-tab').forEach(el=>el.classList.toggle('on',el.dataset.due===due));
-  renderBCList(due);
-}
-function bcResultPreview(j, domOverrides){
-  const procs=j.processes.map((p,i)=>{
-    const inp=domOverrides?domOverrides[i]:null;
-    const t=inp!==undefined&&inp!==null ? inp : (p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?p.commitment:'');
-    return {code:baseCode(p.code), time:t};
-  }).filter(p=>p.time);
-  if(!procs.length) return '';
-  const maxT=procs.reduce((m,p)=>p.time>m?p.time:m,'');
-  return `<span class="mi" style="font-size:13px">schedule</span>${procs.map(p=>p.code).join('+')} ${maxT}`;
-}
-function updateBCResult(jobId){
-  const j=jobs.find(x=>x.id===jobId); if(!j) return;
-  const ov={};
-  document.querySelectorAll(`.bc-proc-time[data-job="${jobId}"]`).forEach(inp=>{
-    ov[inp.dataset.idx]=inp.value;
-    inp.classList.toggle('has-val',!!inp.value);
-  });
-  document.getElementById('bc-result-'+jobId).innerHTML=bcResultPreview(j,ov);
-}
-function renderBCList(due){
-  const list=jobs.filter(j=>j.due===due);
-  const el=document.getElementById('bc-list');
   if(!list.length){
-    el.innerHTML='<div style="text-align:center;padding:32px;color:#9aa0a6;font-size:14px">ไม่มีงานในวันนี้</div>';
+    tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:40px;color:#bbb;">ไม่พบข้อมูล</td></tr>`;
     return;
   }
-  el.innerHTML=list.map(j=>{
-    const used=new Set(j.processes.map(p=>baseCode(p.code)));
-    const avail=Object.keys(PM).filter(k=>!used.has(k));
-    return `
-    <div class="bc-card">
-      <div class="bc-card-head"><span style="color:#9aa0a6;font-size:12px;font-weight:400;margin-right:4px">#${j.seq}</span>${j.product}</div>
-      <div class="bc-card-qty">${j.qty.toLocaleString()} ชิ้น</div>
-      <div class="bc-procs">
-        ${j.processes.map((p,i)=>`
-          <div class="bc-proc-item" data-job="${j.id}" data-idx="${i}">
-            <span class="bc-drag-handle">drag_indicator</span>
-            <button class="bc-proc-del" onclick="removeBCProc('${j.id}',${i})">close</button>
-            <span class="bc-proc-code">${baseCode(p.code)}</span>
-            <input type="time" class="bc-proc-time${p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?' has-val':''}"
-              data-job="${j.id}" data-idx="${i}"
-              value="${p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment)?p.commitment:''}"
-              oninput="updateBCResult('${j.id}')">
-          </div>`).join('')}
-        ${avail.length?`<button class="bc-add-btn" onclick="toggleBCPicker('${j.id}')">
-          <span class="mi" style="font-size:16px">add</span>เพิ่ม
-        </button>`:''}
-      </div>
-      <div class="bc-picker" id="bc-picker-${j.id}">
-        ${avail.map(c=>`<div class="bc-pick-opt" onclick="doBCAddProc('${j.id}','${c}')">${c}</div>`).join('')}
-      </div>
-      <input type="text" class="bc-remark" data-remark="${j.id}"
-        placeholder="หมายเหตุ..." value="${j.remark||''}">
-      <div class="bc-result" id="bc-result-${j.id}">${bcResultPreview(j,null)}</div>
-    </div>`;
-  }).join('')+
-    `<button class="bc-save-btn" onclick="saveBatchCommit()">บันทึกเวลาทั้งหมด</button>`;
 
-  el.querySelectorAll('.bc-procs').forEach(container=>{
-    Sortable.create(container,{
-      animation:150,
-      handle:'.bc-drag-handle',
-      ghostClass:'sortable-ghost',
-      chosenClass:'sortable-chosen',
-      onEnd(evt){
-        const jobId=evt.item.dataset.job;
-        const j=jobs.find(x=>x.id===jobId); if(!j) return;
-        const newOrder=[...container.querySelectorAll('.bc-proc-item[data-idx]')]
-          .map(el=>parseInt(el.dataset.idx));
-        j.processes=[...newOrder.map(i=>j.processes[i])];
-        saveLocal();
-        gasPost({action:'replaceJobProcs', jobId, processes:j.processes});
-        updateBCResult(jobId);
-        container.querySelectorAll('.bc-proc-item').forEach((el,i)=>{
-          el.dataset.idx=i;
-          const inp=el.querySelector('.bc-proc-time');
-          if(inp) inp.dataset.idx=i;
-          const del=el.querySelector('.bc-proc-del');
-          if(del) del.setAttribute('onclick',`removeBCProc('${jobId}',${i})`);
-        });
-      }
+  let rowNum = 0;
+  sortedKeys.forEach(dateKey=>{
+    // date group header
+    const gtr = document.createElement('tr');
+    gtr.className='date-group-row';
+    const dLabel = dateKey==='(ไม่ระบุวัน)' ? dateKey : formatDateTH(dateKey);
+    gtr.innerHTML=`<td colspan="8">📅 ${dLabel} (${groups[dateKey].length} งาน)</td>`;
+    tbody.appendChild(gtr);
+
+    groups[dateKey].forEach(j=>{
+      rowNum++;
+      const tr = document.createElement('tr');
+      tr.innerHTML = buildRow(j, rowNum);
+      tbody.appendChild(tr);
     });
   });
 }
-function saveBatchCommit(){
-  const updates=[];
-  document.querySelectorAll('.bc-proc-time').forEach(inp=>{
-    const jobId=inp.dataset.job, idx=parseInt(inp.dataset.idx), val=inp.value;
-    const job=jobs.find(j=>j.id===jobId);
-    if(job){
-      job.processes[idx].commitment=val;
-      updates.push({jobId,procIdx:idx,commitment:val});
-    }
-  });
-  document.querySelectorAll('[data-remark]').forEach(inp=>{
-    const job=jobs.find(j=>j.id===inp.dataset.remark);
-    if(job && inp.value!==job.remark){
-      job.remark=inp.value;
-      gasPost({action:'updateJobRemark', jobId:job.id, remark:inp.value});
-    }
-  });
-  saveLocal();
-  pushCommitmentToGAS(updates);
-  closeBC();
-  renderAll();
-  if(activeJob) renderTimeline();
-}
-function closeBC(){ closeSheet('bc'); }
 
-function saveBCState(){
-  document.querySelectorAll('.bc-proc-time').forEach(inp=>{
-    const j=jobs.find(x=>x.id===inp.dataset.job);
-    const idx=parseInt(inp.dataset.idx);
-    if(j&&j.processes[idx]) j.processes[idx].commitment=inp.value;
-  });
-  document.querySelectorAll('[data-remark]').forEach(inp=>{
-    const j=jobs.find(x=>x.id===inp.dataset.remark);
-    if(j) j.remark=inp.value;
-  });
-  saveLocal();
-}
-function removeBCProc(jobId, idx){
-  saveBCState();
-  const j=jobs.find(x=>x.id===jobId); if(!j) return;
-  j.processes.splice(idx,1);
-  gasPost({action:'replaceJobProcs', jobId, processes:j.processes});
-  renderBCList(bcCurrentDue);
-}
-function toggleBCPicker(jobId){
-  saveBCState();
-  const p=document.getElementById('bc-picker-'+jobId);
-  if(p) p.classList.toggle('on');
-}
-function doBCAddProc(jobId, code){
-  saveBCState();
-  const j=jobs.find(x=>x.id===jobId); if(!j) return;
-  j.processes.push({code, name:PM[code]||code, status:'pend', responsible:'', commitment:'', comment:''});
-  gasPost({action:'replaceJobProcs', jobId, processes:j.processes});
-  renderBCList(bcCurrentDue);
+function buildRow(j, rowNum){
+  const procs = (j.processes||[]).map((p,i)=>{
+    const cls = procBadgeCls(p.status||'pend');
+    return `<span class="proc-badge ${cls}" title="${p.name||p.code} — ${STATUS_TH[p.status||'pend']}" onclick="openQS('${j.id}',${i})">${p.code||p.name||'?'}</span>`;
+  }).join('');
+
+  const st = jobOverallStatus(j);
+
+  const remark = j.remark ? `<span class="remark-cell" title="${escHtml(j.remark)}">${escHtml(j.remark)}</span>` : '<span style="color:#ddd">—</span>';
+
+  return `
+    <td class="row-num">${rowNum}</td>
+    <td><span class="job-name-link" onclick="openBC('${j.id}')">${escHtml(j.name||'')}</span></td>
+    <td style="color:#888;font-size:12px;">${escHtml(j.order||'—')}</td>
+    <td><div class="proc-list">${procs||'<span style="color:#ccc;font-size:12px;">—</span>'}</div></td>
+    <td style="font-size:12px;white-space:nowrap;">${j.due ? formatDateTH(j.due) : '<span style="color:#ddd">—</span>'}</td>
+    <td style="font-size:12px;white-space:nowrap;">${j.time||'<span style="color:#ddd">—</span>'}</td>
+    <td>${statusBadge(st)}</td>
+    <td>${remark}</td>
+  `;
 }
 
-// ══ DELETE JOB ════════════════════════════════
-function confirmDeleteJob(jobId){
+function formatDateTH(iso){
+  if(!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${+d} ${months[+m-1]} ${+y+543}`;
+}
+
+function escHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══ QUICK STATUS SHEET ══
+function openQS(jobId, procIdx){
+  const j = jobs.find(x=>x.id===jobId);
+  if(!j) return;
+  const p = j.processes[procIdx];
+  if(!p) return;
+  qsJobId=jobId; qsProcIdx=procIdx; qsPickedStatus=p.status||'pend';
+
+  document.getElementById('qsTitle').textContent = `${p.code||p.name} — ${j.name}`;
+
+  const body = document.getElementById('qsBody');
+  body.innerHTML = `
+    <div class="status-grid" id="qsGrid">
+      ${['done','wip','hold','fail','partial','pend'].map(s=>`
+        <div class="status-opt ${s===qsPickedStatus?'picked':''}" data-v="${s}" onclick="qsPick('${s}')">${STATUS_TH[s]}</div>
+      `).join('')}
+    </div>
+    <div class="form-row" style="margin-top:14px;">
+      <label class="form-label">หมายเหตุ (ไม่บังคับ)</label>
+      <textarea class="form-input" id="qsComment" rows="2">${escHtml(p.comment||'')}</textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeSheet('ovQS')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveQS()">บันทึก</button>
+    </div>
+  `;
+  openSheet('ovQS');
+}
+
+function qsPick(s){
+  qsPickedStatus=s;
+  document.querySelectorAll('#qsGrid .status-opt').forEach(el=>{
+    el.classList.toggle('picked', el.dataset.v===s);
+  });
+}
+
+function saveQS(){
+  const j = jobs.find(x=>x.id===qsJobId);
+  if(!j) return;
+  const p = j.processes[qsProcIdx];
+  if(!p) return;
+  const prev = p.status||'pend';
+  const comment = document.getElementById('qsComment').value.trim();
+  if(qsPickedStatus!=='pend') autoCompletePrev(j, qsProcIdx);
+  p.status = qsPickedStatus;
+  p.comment = comment;
+  addAudit(j.id, p.code||p.name, prev, qsPickedStatus, comment);
+  pushStatusToGAS(j.id, qsProcIdx, qsPickedStatus, comment);
+  saveLocal(); renderAll();
+  closeSheet('ovQS');
+  showToast('บันทึกสถานะแล้ว');
+}
+
+function autoCompletePrev(job, upToIdx){
+  for(let i=0;i<upToIdx;i++){
+    const p=job.processes[i];
+    if(p.status!=='done'){
+      const prev=p.status||'pend';
+      p.status='done'; p.comment='';
+      addAudit(job.id,p.code||p.name,prev,'done','auto-complete');
+      pushStatusToGAS(job.id,i,'done','');
+    }
+  }
+}
+
+function pushStatusToGAS(jobId, procIdx, status, comment){
+  gasPost({action:'updateStatus', jobId, procIdx, status, comment});
+}
+
+function addAudit(jobId, procCode, from, to, comment){
+  auditLog.unshift({
+    jobId, procCode, from, to, comment,
+    ts: new Date().toISOString(),
+    by: isAdmin?'admin':'user',
+  });
+  if(auditLog.length>500) auditLog.length=500;
+}
+
+// ══ BATCH-COMMIT (JOB DETAIL) SHEET ══
+function openBC(jobId){
+  const j = jobs.find(x=>x.id===jobId);
+  if(!j) return;
+  activeJob = j;
+  document.getElementById('bcTitle').textContent = j.name||'แก้ไขงาน';
+  renderBCBody();
+  openSheet('ovBC');
+  // init sortable
+  setTimeout(()=>{
+    const el = document.getElementById('bcProcList');
+    if(el && isAdmin){
+      Sortable.create(el,{
+        handle:'.drag-handle',
+        animation:150,
+        onEnd(evt){
+          const j = jobs.find(x=>x.id===activeJob.id);
+          if(!j) return;
+          const moved = j.processes.splice(evt.oldIndex,1)[0];
+          j.processes.splice(evt.newIndex,0,moved);
+          saveLocal(); renderAll(); renderBCBody();
+          gasPost({action:'replaceJobProcs', jobId:j.id, processes:j.processes});
+        }
+      });
+    }
+  },100);
+}
+
+function renderBCBody(){
+  const j = activeJob;
+  if(!j) return;
+  const procs = (j.processes||[]).map((p,i)=>`
+    <div class="proc-row" id="bcpr_${i}">
+      ${isAdmin?'<span class="drag-handle">⠿</span>':''}
+      <span class="proc-code">${escHtml(p.code||p.name||'?')}</span>
+      <span class="proc-name">${escHtml(p.name||'')}</span>
+      <span class="${'sb-'+STATUS_CLS[p.status||'pend']} proc-status-badge">${STATUS_TH[p.status||'pend']}</span>
+      <div class="proc-actions">
+        <button class="proc-btn proc-btn-edit" onclick="openPS('${j.id}',${i})">สถานะ</button>
+        ${isAdmin?`<button class="proc-btn proc-btn-del" onclick="removeBCProc(${i})">ลบ</button>`:''}
+      </div>
+    </div>
+  `).join('');
+
+  const remarkHtml = isAdmin
+    ? `<div class="form-row" style="margin-top:12px;"><label class="form-label">หมายเหตุงาน</label><textarea class="form-input" id="bcRemark" rows="2">${escHtml(j.remark||'')}</textarea></div>`
+    : (j.remark ? `<p style="color:#888;font-size:13px;margin-top:8px;">📝 ${escHtml(j.remark)}</p>` : '');
+
+  const timeHtml = isAdmin
+    ? `<div style="display:flex;gap:8px;margin-bottom:8px;">
+        <div class="form-row" style="flex:1;margin-bottom:0;"><label class="form-label">วันที่นัด</label><input class="form-input" type="date" id="bcDue" value="${j.due||''}"/></div>
+        <div class="form-row" style="flex:1;margin-bottom:0;"><label class="form-label">เวลานัด</label><input class="form-input" type="time" id="bcTime" value="${j.time||''}"/></div>
+       </div>`
+    : `<p style="color:#555;font-size:13px;margin-bottom:8px;">📅 ${j.due?formatDateTH(j.due):'—'} ${j.time?'⏰'+j.time:''}</p>`;
+
+  const addProcHtml = isAdmin ? `
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:flex-end;">
+      <div style="flex:1"><label class="form-label">CODE</label><input class="form-input" id="bcNewCode" placeholder="CODE"/></div>
+      <div style="flex:2"><label class="form-label">ชื่อกระบวนการ</label><input class="form-input" id="bcNewName" placeholder="ชื่อกระบวนการ"/></div>
+      <button class="btn btn-primary" onclick="doBCAddProc()">+ เพิ่ม</button>
+    </div>` : '';
+
+  const saveTimeHtml = isAdmin ? `
+    <div class="btn-row" style="margin-top:4px;">
+      <button class="btn btn-ghost" onclick="closeSheet('ovBC')">ปิด</button>
+      <button class="btn btn-danger" onclick="doBCDelete()">ลบงานนี้</button>
+      <button class="btn btn-primary" onclick="saveBCCommit()">💾 บันทึก</button>
+    </div>` : `<div class="btn-row"><button class="btn btn-ghost btn-full" onclick="closeSheet('ovBC')">ปิด</button></div>`;
+
+  document.getElementById('bcBody').innerHTML = `
+    <div style="margin-bottom:4px;color:#888;font-size:12px;">ORDER: ${escHtml(j.order||'—')}</div>
+    ${timeHtml}
+    ${remarkHtml}
+    <div style="font-weight:700;font-size:13px;margin:12px 0 6px;">กระบวนการ</div>
+    <div id="bcProcList">${procs||'<p style="color:#ccc;font-size:13px;">ไม่มีกระบวนการ</p>'}</div>
+    ${addProcHtml}
+    ${saveTimeHtml}
+  `;
+}
+
+function doBCAddProc(){
+  const code = (document.getElementById('bcNewCode').value||'').trim();
+  const name = (document.getElementById('bcNewName').value||'').trim();
+  if(!name){ showToast('กรุณาใส่ชื่อกระบวนการ'); return; }
+  activeJob.processes.push({code:code||name, name, status:'pend', comment:''});
+  saveLocal(); renderAll(); renderBCBody();
+  gasPost({action:'replaceJobProcs', jobId:activeJob.id, processes:activeJob.processes});
+  showToast('เพิ่มกระบวนการแล้ว');
+}
+
+function removeBCProc(idx){
+  if(!confirm('ลบกระบวนการนี้?')) return;
+  activeJob.processes.splice(idx,1);
+  saveLocal(); renderAll(); renderBCBody();
+  gasPost({action:'replaceJobProcs', jobId:activeJob.id, processes:activeJob.processes});
+}
+
+function saveBCCommit(){
+  const j = activeJob;
+  const due   = document.getElementById('bcDue')?.value||j.due||'';
+  const time  = document.getElementById('bcTime')?.value||j.time||'';
+  const remark= document.getElementById('bcRemark')?.value||'';
+  j.due=due; j.time=time; j.remark=remark;
+  saveLocal(); renderAll();
+  gasPost({action:'updateJobRemark', jobId:j.id, remark});
+  gasPost({action:'updateCommitment', jobId:j.id, due, time});
+  showToast('บันทึกแล้ว');
+}
+
+function doBCDelete(){
+  if(!confirm('ลบงานนี้ออกจากระบบ?')) return;
+  const id = activeJob.id;
+  jobs = jobs.filter(x=>x.id!==id);
+  saveLocal(); renderAll(); closeSheet('ovBC');
+  gasPost({action:'deleteJob', jobId:id});
+  showToast('ลบงานแล้ว');
+}
+
+// ══ PROC-STATUS SHEET (from BC) ══
+function openPS(jobId, procIdx){
   const j=jobs.find(x=>x.id===jobId);
   if(!j) return;
-  if(!confirm(`ลบงาน "${j.product}" ออกจากระบบ?\nการลบไม่สามารถย้อนกลับได้`)) return;
-  deleteJob(jobId);
-}
-function deleteJob(jobId){
-  jobs=jobs.filter(j=>j.id!==jobId);
-  saveLocal();
-  gasPost({action:'deleteJob', jobId});
-  if(activeJob?.id===jobId) closeDetail();
-  renderAll();
+  const p=j.processes[procIdx];
+  if(!p) return;
+  psJobId=jobId; psProcIdx=procIdx; psPickedStatus=p.status||'pend';
+  document.getElementById('psTitle').textContent=`${p.code||p.name} — ${j.name}`;
+  document.getElementById('psBody').innerHTML=`
+    <div class="status-grid" id="psGrid">
+      ${['done','wip','hold','fail','partial','pend'].map(s=>`
+        <div class="status-opt ${s===psPickedStatus?'picked':''}" data-v="${s}" onclick="psPick('${s}')">${STATUS_TH[s]}</div>
+      `).join('')}
+    </div>
+    <div class="form-row" style="margin-top:14px;">
+      <label class="form-label">หมายเหตุ</label>
+      <textarea class="form-input" id="psComment" rows="2">${escHtml(p.comment||'')}</textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeSheet('ovPS')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="savePS()">บันทึก</button>
+    </div>
+  `;
+  openSheet('ovPS');
 }
 
-// ══ IMPORT ═══════════════════════════════════
-// ══ IMPORT ═══════════════════════════════════
-function showImport(){
-  document.getElementById('import-prev').style.display='none';
-  document.getElementById('file-input').value='';
-  pendingImport=[];
-  openSheet('import');
+function psPick(s){
+  psPickedStatus=s;
+  document.querySelectorAll('#psGrid .status-opt').forEach(el=>{
+    el.classList.toggle('picked', el.dataset.v===s);
+  });
 }
-function closeImport(){ closeSheet('import'); }
-function handleDrop(e){
-  e.preventDefault();
-  document.getElementById('drop-zone').classList.remove('on');
-  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+
+function savePS(){
+  const j=jobs.find(x=>x.id===psJobId);
+  if(!j) return;
+  const p=j.processes[psProcIdx];
+  if(!p) return;
+  const prev=p.status||'pend';
+  const comment=document.getElementById('psComment').value.trim();
+  if(psPickedStatus!=='pend') autoCompletePrev(j,psProcIdx);
+  p.status=psPickedStatus; p.comment=comment;
+  addAudit(j.id,p.code||p.name,prev,psPickedStatus,comment);
+  pushStatusToGAS(j.id,psProcIdx,psPickedStatus,comment);
+  saveLocal(); renderAll(); renderBCBody();
+  closeSheet('ovPS');
+  showToast('บันทึกสถานะแล้ว');
 }
-function handleFile(file){
-  if(!file) return;
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'array'});
-      parseExcel(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}));
-    } catch(err){ alert('อ่านไฟล์ไม่ได้: '+err.message); }
+
+// ══ ADD JOB ══
+function openAddJob(){
+  document.getElementById('ajName').value='';
+  document.getElementById('ajOrder').value='';
+  document.getElementById('ajDue').value='';
+  document.getElementById('ajTime').value='';
+  document.getElementById('ajRemark').value='';
+  openSheet('ovAddJob');
+}
+
+function doAddJob(){
+  const name=(document.getElementById('ajName').value||'').trim();
+  if(!name){ showToast('กรุณาใส่ชื่องาน'); return; }
+  const id='J'+Date.now();
+  const job={
+    id, name,
+    order: document.getElementById('ajOrder').value.trim(),
+    due:   document.getElementById('ajDue').value,
+    time:  document.getElementById('ajTime').value,
+    remark:document.getElementById('ajRemark').value.trim(),
+    processes:[],
   };
-  r.readAsArrayBuffer(file);
-}
-function parseExcel(rows){
-  let due=''; const out=[];
-  rows.forEach((row,ri)=>{
-    if(ri===0) return;
-    const prod=row[4],rem=row[6],seq=row[9],proc=row[39],dRaw=row[3];
-    if(dRaw && !prod){
-      if(typeof dRaw==='number'){
-        const d=new Date(Math.round((dRaw-25569)*86400*1000));
-        due=localISO(d);
-      }
-      return;
-    }
-    if(!prod||typeof rem!=='number') return;
-    const codes=proc?proc.replace(/_$/,'').split('_').filter(Boolean):['PR'];
-    out.push({
-      id:`${String(prod).trim()}_${due}`,
-      seq:Math.round(seq)||out.length+1,
-      product:String(prod).trim(),
-      qty:Math.abs(Math.round(rem)),
-      due,
-      processes:codes.map(c=>({code:c,name:PM[c]||c,status:'pend',responsible:'',commitment:'',comment:''})),
-    });
-  });
-  pendingImport=out; showPreview(out);
-}
-function showPreview(data){
-  const existMap=new Map(jobs.map(j=>[j.id,j]));
-  const newItems=data.filter(j=>!existMap.has(j.id));
-  const mergeItems=data.filter(j=>existMap.has(j.id));
-  document.getElementById('prev-count').textContent=`${data.length} งาน`;
-  document.getElementById('prev-dates').textContent=`ใหม่ ${newItems.length} · อัพเดท ${mergeItems.length}`;
-  document.getElementById('imp-cnt').textContent=data.length;
-  document.getElementById('prev-body').innerHTML=data.map(j=>{
-    const isNew=!existMap.has(j.id);
-    return `<tr>
-      <td style="color:var(--gray)">${j.seq}</td>
-      <td style="font-weight:500">${j.product}</td>
-      <td style="text-align:right;color:var(--gray)">${j.qty.toLocaleString()}</td>
-      <td style="font-family:monospace;font-size:10px;color:var(--gray)">
-        ${[...new Set(j.processes.map(p=>baseCode(p.code)))].join('→')}
-      </td>
-      <td style="color:var(--gray)">${j.due?j.due.slice(5).replace('-','/'):'—'}</td>
-      <td>${isNew?'<span class="new-badge">ใหม่</span>':'<span class="merge-badge">อัพเดท</span>'}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('import-prev').style.display='block';
-}
-function confirmImport(){
-  if(!pendingImport.length) return;
-  const existMap=new Map(jobs.map(j=>[j.id,j]));
-  pendingImport.forEach(incoming=>{
-    if(existMap.has(incoming.id)){
-      const ex=existMap.get(incoming.id);
-      ex.qty=incoming.qty; ex.due=incoming.due; ex.seq=incoming.seq;
-      incoming.processes.forEach((np,i)=>{
-        if(ex.processes[i]){
-          ex.processes[i].code=np.code; ex.processes[i].name=np.name;
-        } else { ex.processes.push(np); }
-      });
-    } else { jobs.push(incoming); }
-  });
-  saveLocal();
-  pushImportToGAS(pendingImport);
-  pendingImport=[];
-  closeImport(); renderAll();
-}
-
-// ══ ADMIN ═════════════════════════════════════
-function updateAdminUI(){
-  document.getElementById('admin-dot').classList.toggle('on',isAdmin);
-  document.getElementById('avatar-label').textContent=isAdmin?'A':'ผู';
-  document.getElementById('fab-time').classList.toggle('on',isAdmin);
-  document.getElementById('fab-sheet').classList.toggle('on',isAdmin);
-  document.getElementById('fab-pcfg').classList.toggle('on',isAdmin);
-  renderList();
-}
-function toggleAdmin(){
-  if(isAdmin){ isAdmin=false; updateAdminUI(); return; }
-  openSheet('pin');
-  setTimeout(()=>document.getElementById('pin-input').focus(),300);
-}
-function confirmPin(){
-  const val=document.getElementById('pin-input').value;
-  if(val===ADMIN_PASSWORD){
-    isAdmin=true; closePin(); updateAdminUI();
-  } else {
-    document.getElementById('pin-err').classList.add('on');
-    document.getElementById('pin-input').value='';
-  }
-}
-function clearPinErr(){ document.getElementById('pin-err').classList.remove('on'); }
-function closePin(){ closeSheet('pin'); document.getElementById('pin-input').value=''; clearPinErr(); }
-
-// ══ SHEET HELPERS ════════════════════════════
-function openSheet(n){
-  document.getElementById('ov-'+n).classList.add('on');
-  document.getElementById('sh-'+n).classList.add('on');
-  document.body.style.overflow='hidden';
-}
-function closeSheet(n){
-  document.getElementById('ov-'+n).classList.remove('on');
-  document.getElementById('sh-'+n).classList.remove('on');
-  if(!document.querySelector('.sheet.on')) document.body.style.overflow='';
-}
-
-// ══ SUMMARY ══════════════════════════════════
-let sumCurrentDue='';
-function showSummary(){
-  const dues=[...new Set(jobs.map(j=>j.due))].sort();
-  const today=localISO();
-  const tabs=document.getElementById('sum-tabs');
-  tabs.innerHTML=dues.map(d=>`
-    <div class="bc-tab${d===today?' on':''}" data-due="${d}"
-      onclick="selectSumDate('${d}')">${fmtDate(d)}</div>
-  `).join('');
-  const active=dues.find(d=>d===today)||dues[0]||'';
-  sumCurrentDue=active;
-  if(active) renderSumText(active);
-  openSheet('sum');
-}
-function closeSum(){ closeSheet('sum'); }
-function selectSumDate(due){
-  sumCurrentDue=due;
-  document.querySelectorAll('#sum-tabs .bc-tab').forEach(el=>
-    el.classList.toggle('on',el.dataset.due===due));
-  renderSumText(due);
-}
-function buildSumText(due){
-  const list=jobs.filter(j=>j.due===due).sort((a,b)=>a.seq-b.seq);
-  if(!list.length) return '(ไม่มีงาน)';
-  const d=new Date(due+'T00:00:00');
-  const dd=String(d.getDate()).padStart(2,'0');
-  const mm=String(d.getMonth()+1).padStart(2,'0');
-  const yy=String(d.getFullYear()).slice(2);
-  let txt=`รายการนัด ${dd}/${mm}/${yy}\n`;
-  list.forEach(j=>{
-    txt+=`\n${j.seq}. ${j.product} -${j.qty.toLocaleString()}`;
-    const wp=j.processes.filter(p=>p.commitment&&/^\d{2}:\d{2}$/.test(p.commitment));
-    if(wp.length){
-      const maxT=wp.reduce((m,p)=>p.commitment>m?p.commitment:m,'');
-      const codes=wp.map(p=>baseCode(p.code)).join('+');
-      txt+=`\n${codes} ${maxT}`;
-    }
-    if(j.remark) txt+=` ${j.remark}`;
-    const holdProc=j.processes.find(p=>p.status==='hold'&&p.comment);
-    if(holdProc) txt+=`\nHOLD: ${holdProc.comment}`;
-  });
-  return txt;
-}
-function renderSumText(due){
-  document.getElementById('sum-text').value=buildSumText(due);
-  const cnt=jobs.filter(j=>j.due===due).length;
-  document.getElementById('sum-sub').textContent=`${fmtDate(due)} · ${cnt} งาน`;
-}
-async function copySum(){
-  const txt=document.getElementById('sum-text').value;
-  try{
-    await navigator.clipboard.writeText(txt);
-    const btn=document.getElementById('sum-copy-btn');
-    btn.innerHTML='<span class="mi">check</span>คัดลอกแล้ว!';
-    setTimeout(()=>btn.innerHTML='<span class="mi">content_copy</span>คัดลอก',2000);
-  }catch(e){
-    document.getElementById('sum-text').select();
-    document.execCommand('copy');
-  }
-}
-async function shareSum(){
-  const txt=document.getElementById('sum-text').value;
-  if(navigator.share){ try{ await navigator.share({text:txt}); }catch(e){} }
-  else { copySum(); }
-}
-
-// ══ PROCESS CONFIG ════════════════════════════
-function showPCfg(){ renderPCfgList(); openSheet('pcfg'); }
-function closePCfg(){ closeSheet('pcfg'); }
-function renderPCfgList(){
-  document.getElementById('pcfg-list').innerHTML=
-    Object.entries(PM).map(([code,name])=>`
-      <div class="pcfg-row">
-        <span class="pcfg-code">${code}</span>
-        <span class="pcfg-name">${name}</span>
-        <button onclick="delPCfg('${code}')" style="
-          background:none;border:none;cursor:pointer;color:#dadce0;
-          font-family:'Material Icons Round';font-size:18px;padding:4px;
-          -webkit-tap-highlight-color:transparent;">delete_outline</button>
-      </div>`).join('');
-}
-function addPCfg(){
-  const code=document.getElementById('pcfg-code').value.trim().toUpperCase();
-  const name=document.getElementById('pcfg-name').value.trim();
-  if(!code||!name) return;
-  PM[code]=name; savePM();
-  document.getElementById('pcfg-code').value='';
-  document.getElementById('pcfg-name').value='';
-  renderPCfgList();
-}
-function delPCfg(code){ delete PM[code]; savePM(); renderPCfgList(); }
-function resetPCfg(){
-  if(!confirm('รีเซ็ตกลับเป็นค่าเริ่มต้น?')) return;
-  PM={...PM_DEFAULT}; savePM(); renderPCfgList();
-}
-
-// ══ UTILS ════════════════════════════════════
-function fmtDate(iso){
-  if(!iso) return '—';
-  const s=String(iso).slice(0,10);
-  const d=new Date(s+'T00:00:00');
-  if(isNaN(d)) return iso;
-  const days=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
-  const mons=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  return `${days[d.getDay()]} ${d.getDate()} ${mons[d.getMonth()]}`;
-}
-function localISO(d=new Date()){
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function fmtTime(d){
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
-
-// ══ DEMO DATA ════════════════════════════════
-function loadDemo(){
-  const mkp=(route,ov=[])=>route.replace(/_$/,'').split('_').filter(Boolean).map((c,i)=>({
-    code:c,name:PM[c]||c,status:ov[i]?.s||'pend',
-    responsible:ov[i]?.r||'',commitment:ov[i]?.c||'',comment:ov[i]?.note||'',
-  }));
-  jobs=[
-    {id:'LION(1692.F)_2026-04-17',seq:1,product:'LION(1692.F)',qty:28200,due:'2026-04-17',
-      processes:mkp('PR_IS_CA_EM_DC_GL_',[
-        {s:'done',r:'กะ A',c:'15/04 08:00'},{s:'done',r:'กะ A',c:'16/04 12:00'},
-        {s:'hold',r:'กะ A',c:'17/04 06:00',note:'สีเพี้ยน รอ proof อีก 1 วัน'},
-        {s:'pend',r:'กะ B',c:'17/04 14:00'},{s:'pend',r:'กะ B',c:'17/04 20:00'},{s:'pend',r:'กะ B',c:'18/04 08:00'},
-      ])},
-    {id:'GLICO(382)_2026-04-17',seq:2,product:'GLICO(382)',qty:1660,due:'2026-04-17',
-      processes:mkp('PR_SP_DC_GL_',[
-        {s:'done',r:'กะ A',c:'15/04 10:00'},{s:'done',r:'กะ A',c:'16/04 08:00'},
-        {s:'wip', r:'กะ A',c:'17/04 02:00'},{s:'pend',r:'กะ B',c:'17/04 12:00'},
-      ])},
-    {id:'MB(828R01.S)_2026-04-17',seq:3,product:'MB(828R01.S)',qty:23000,due:'2026-04-17',
-      processes:mkp('PR_SP_PR2nd_SP2nd_BT_DC_IJ_GP_',[
-        {s:'done',r:'กะ A',c:'14/04 08:00'},{s:'done',r:'กะ A',c:'14/04 16:00'},
-        {s:'done',r:'กะ A',c:'15/04 08:00'},{s:'done',r:'กะ A',c:'15/04 16:00'},
-        {s:'wip', r:'กะ B',c:'16/04 06:00'},{s:'pend',r:'กะ B',c:'16/04 14:00'},
-        {s:'pend',r:'กะ B',c:'17/04 06:00'},{s:'pend',r:'กะ B',c:'17/04 14:00'},
-      ])},
-    {id:'DUTCH(034)_2026-04-18',seq:1,product:'DUTCH(034)',qty:49600,due:'2026-04-18',
-      processes:mkp('PR_SP_BT_DC_GP_',[
-        {s:'wip', r:'กะ A',c:'17/04 08:00'},{s:'pend',r:'กะ A',c:'18/04 06:00'},
-        {s:'pend',r:'กะ B',c:'18/04 14:00'},{s:'pend',r:'กะ B',c:'19/04 06:00'},{s:'pend',r:'กะ B',c:'19/04 14:00'},
-      ])},
-    {id:'DUTCH(035)_2026-04-18',seq:2,product:'DUTCH(035)',qty:50000,due:'2026-04-18',
-      processes:mkp('PR_SP_BT_DC_GP_',[
-        {s:'pend'},{s:'pend'},{s:'pend'},{s:'pend'},{s:'pend'},
-      ])},
-    {id:'NIKON(350)_2026-04-17',seq:3,product:'NIKON(350)',qty:800,due:'2026-04-17',
-      processes:mkp('PR_SP_LA_DC_MGL_',[
-        {s:'done',r:'กะ A',c:'15/04 08:00'},{s:'done',r:'กะ A',c:'16/04 08:00'},
-        {s:'done',r:'กะ A',c:'16/04 16:00'},{s:'done',r:'กะ B',c:'17/04 06:00'},{s:'done',r:'กะ B',c:'17/04 14:00'},
-      ])},
-  ];
+  jobs.unshift(job);
   saveLocal(); renderAll();
+  gasPost({action:'addJob', job});
+  closeSheet('ovAddJob');
+  showToast('เพิ่มงานแล้ว');
 }
 
-// ══ INIT ═════════════════════════════════════
-loadPM();
-setDate('prev');
-filterStatus('all');
-loadLocal();
-if(jobs.length===0) loadDemo();
-fetchFromGAS();
-startPolling();
-setSyncBadge('ok');
+// ══ ADMIN ══
+function updateAdminUI(){
+  document.getElementById('fabBtn').style.display = isAdmin?'flex':'none';
+  document.getElementById('avatarEl').textContent = isAdmin?'A':'U';
+  document.getElementById('avatarEl').style.background = isAdmin?'#e53935':'#5c6bc0';
+}
+
+function openAdmin(){
+  const body=document.getElementById('adminBody');
+  if(isAdmin){
+    document.getElementById('adminTitle').textContent='แอดมิน (เข้าสู่ระบบแล้ว)';
+    body.innerHTML=`<p style="margin-bottom:12px;color:#555;">คุณเข้าสู่ระบบในฐานะแอดมิน</p>
+      <button class="btn btn-danger btn-full" onclick="doLogout()">ออกจากระบบ</button>`;
+  } else {
+    document.getElementById('adminTitle').textContent='เข้าสู่ระบบแอดมิน';
+    body.innerHTML=`
+      <div class="form-row"><label class="form-label">รหัสผ่าน</label>
+        <input class="form-input" type="password" id="adminPwd" placeholder="รหัสผ่าน" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="closeSheet('ovAdmin')">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
+      </div>`;
+    setTimeout(()=>{ document.getElementById('adminPwd')?.focus(); },200);
+  }
+  openSheet('ovAdmin');
+}
+
+function doLogin(){
+  const pwd=(document.getElementById('adminPwd').value||'').trim();
+  if(pwd===ADMIN_PASSWORD){
+    isAdmin=true; updateAdminUI(); closeSheet('ovAdmin'); showToast('เข้าสู่ระบบสำเร็จ');
+  } else {
+    showToast('รหัสผ่านไม่ถูกต้อง');
+  }
+}
+
+function doLogout(){
+  isAdmin=false; updateAdminUI(); closeSheet('ovAdmin'); showToast('ออกจากระบบแล้ว');
+}
+
+// ══ IMPORT ══
+function openImport(){
+  document.getElementById('xlsxFile').value='';
+  document.getElementById('importPreview').innerHTML='';
+  document.getElementById('importBtnRow').style.display='none';
+  importRows=[];
+  openSheet('ovImport');
+  document.getElementById('xlsxFile').onchange=handleXlsxFile;
+}
+
+function handleXlsxFile(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      importRows=raw.slice(1).filter(r=>r[0]);
+      document.getElementById('importPreview').innerHTML=
+        `<p style="color:#555;font-size:13px;">พบ ${importRows.length} แถว พร้อมนำเข้า</p>`;
+      document.getElementById('importBtnRow').style.display='flex';
+    }catch(err){ showToast('อ่านไฟล์ไม่ได้: '+err.message); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function doImport(){
+  if(!importRows.length){ showToast('ไม่มีข้อมูล'); return; }
+  const newJobs=importRows.map((r,idx)=>{
+    const name    =String(r[0]||'').trim();
+    const procRaw =String(r[1]||'').trim();
+    const due     =String(r[2]||'').trim();
+    const time    =String(r[3]||'').trim();
+    const order   =String(r[4]||'').trim();
+    const remark  =String(r[6]||'').trim();
+    const procCodes=procRaw?procRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
+    // smart merge: find existing job by name
+    const existing=jobs.find(j=>j.name===name);
+    if(existing){
+      existing.due=due||existing.due;
+      existing.time=time||existing.time;
+      existing.order=order||existing.order;
+      existing.remark=remark||existing.remark;
+      // add new procs, preserve existing statuses
+      procCodes.forEach((code,ci)=>{
+        if(!existing.processes.find(p=>p.code===code)){
+          existing.processes.push({code,name:code,status:'pend',comment:'',seq:ci});
+        }
+      });
+      return null;
+    }
+    return {
+      id:'J'+(Date.now()+idx),
+      name, due, time, order, remark, seq:idx,
+      processes: procCodes.map((code,ci)=>({code,name:code,status:'pend',comment:'',seq:ci})),
+    };
+  }).filter(Boolean);
+
+  newJobs.forEach(j=>jobs.unshift(j));
+  saveLocal(); renderAll();
+  gasPost({action:'importJobs', jobs: [...newJobs, ...jobs.filter(j=>!newJobs.find(n=>n.id===j.id))]});
+  closeSheet('ovImport');
+  showToast(`นำเข้าสำเร็จ: ${importRows.length} แถว`);
+}
+
+// ══ AUDIT ══
+function openAudit(){
+  const body=document.getElementById('auditBody');
+  if(!auditLog.length){
+    body.innerHTML='<p style="color:#bbb;text-align:center;padding:24px;">ไม่มีประวัติ</p>';
+  } else {
+    body.innerHTML=auditLog.slice(0,100).map(a=>`
+      <div class="audit-item">
+        <strong>${escHtml(a.procCode)}</strong> (${escHtml(a.jobId)})
+        ${statusBadge(a.from)} → ${statusBadge(a.to)}
+        ${a.comment?`<span style="color:#888">— ${escHtml(a.comment)}</span>`:''}
+        <br><span class="audit-time">${a.ts?new Date(a.ts).toLocaleString('th-TH'):''} โดย ${a.by||'?'}</span>
+      </div>
+    `).join('');
+  }
+  openSheet('ovAudit');
+}
 </script>
 </body>
 </html>
